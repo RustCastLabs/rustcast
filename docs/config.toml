@@ -23,6 +23,19 @@ show_trayicon = true
 # hotkey for opening clipboard history
 clipboard_hotkey = "SUPER+SHIFT+2"
 
+# Create a presentation.sh file and you can make it do pretty much anything 
+# Example usage: 
+# 	- turn on / off your WM in different "modes"
+# 	- have it use brew to start postgres / development servers,
+# 	- enable or disable notifications via apple script
+[modes]
+presentation = "~/.config/rustcast/scripts/presentation.sh"
+
+# Tips for beginners: You can use GenAI to make these scripts. 
+# While I do that as well, I check what it generates and tune it to my needs.
+# I don't give any guarantee of what the scripts might do to your system
+othermodes = "~/some/path/to/script"
+
 
 [theme]
 
