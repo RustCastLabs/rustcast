@@ -23,7 +23,7 @@ pub fn clipboard_view(
             )
             .id("results"),
         )
-        .height(385)
+        .height(10000)
         .style(move |_| result_row_container_style(&theme_clone_2, false))
         .into(),
         container(Scrollable::with_direction(
@@ -33,7 +33,7 @@ pub fn clipboard_view(
                     .map(|x| x.to_app().search_name)
                     .unwrap_or("".to_string()),
             )
-            .height(385)
+            .height(Length::Fill)
             .width(Length::Fill)
             .align_x(Alignment::Start)
             .font(theme.font())
