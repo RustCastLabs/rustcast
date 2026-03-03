@@ -31,8 +31,8 @@
 > search bar that people can use to do many things, like opening apps,
 > calculators, quick-notes, etc.
 
-**Community:** https://discord.gg/bDfNYPbnC5
-**Plugins**: [RustCast Library for shell scripts](https://github.com/unsecretised/rustcast-library)
+**Community:** https://discord.gg/bDfNYPbnC5 **Plugins**:
+[RustCast Library for shell scripts](https://github.com/unsecretised/rustcast-library)
 
 ![RustCast Demo](./docs/rustcast_demo_v0_5_6.png)
 
