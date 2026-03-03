@@ -2,130 +2,514 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>RustCast – Open Source Raycast Alternative</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RustCast — Open Source Raycast Alternative</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap"
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/typeface-iosevka@0.0.75/index.min.css"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="floating-orbs">
-      <div class="orb"></div>
-      <div class="orb"></div>
+    <nav>
+      <a class="nav-logo" href="#">
+        RustCast
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#modes">Modes</a></li>
+        <li><a href="#config">Config</a></li>
+        <li><a href="#install">Install</a></li>
+        <li>
+          <a href="https://github.com/unsecretised/rustcast" target="_blank"
+          >GitHub</a>
+        </li>
+        <li>
+          <a href="https://getrustcast.umangsurana.com" class="nav-cta"
+          >Download</a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-bg"></div>
+      <div class="badge">
+        <span class="dot"></span> Open Source · MIT · macOS
+      </div>
+      <h1>The <em>fastest</em> launcher<br />you'll ever use</h1>
+      <p class="hero-sub">
+        A keyboard-first command palette written in pure Rust. Search apps, run
+        scripts, control Spotify, check your clipboard — all without touching
+        your mouse.
+      </p>
+      <div class="hero-buttons">
+        <a href="https://getrustcast.umangsurana.com" class="btn-primary">
+          ↓ Download for macOS
+        </a>
+        <a
+          href="https://github.com/unsecretised/rustcast"
+          class="btn-ghost"
+          target="_blank"
+        >
+          ☆ Star on GitHub
+        </a>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><strong>400+</strong> stars</div>
+        <div class="stat"><strong>1000+</strong> downloads</div>
+        <div class="stat"><strong>100%</strong> free forever</div>
+        <div class="stat"><strong>MIT</strong> license</div>
+      </div>
+    </section>
+
+    <!-- DEMO WINDOW -->
+    <div class="demo-section">
+      <div class="window">
+        <div class="window-search">
+          <span class="search-icon">⌕</span>
+          <input class="search-input typed-text" value="spo" readonly />
+          <span class="search-hint">ALT+SPACE</span>
+        </div>
+      </div>
     </div>
-    <div class="organic-background"></div>
-    <div class="vignette"></div>
 
-    <main class="page">
-      <section class="shell">
-        <header class="top-bar">
-          <div class="controls">
-            <span class="dot red"></span>
-            <span class="dot amber"></span>
-            <span class="dot green"></span>
-          </div>
-          <div class="logo-mark">
-            <div class="logo-square">
-              <img src="icon.png" height="20px" width="20px" id="logo-img" />
-            </div>
-            <span>RustCast</span>
-          </div>
-          <div class="pill">
-            <span class="pill-badge"></span>
-            <span>Open Source · Rust</span>
-          </div>
-        </header>
+    <div class="divider"></div>
 
-        <section class="body">
-          <h1>
-            Popup command palette<br />
-            for <span>Peak Productivity</span>
-          </h1>
-          <p class="subtitle">
-            A blazing-fast, keyboard-first productivity launcher written in pure
-            Rust. Privacy-focused, customizable, and open source alternative to
-            Raycast.
+    <!-- FEATURES -->
+    <section id="features">
+      <div class="features-section">
+        <div class="features-header">
+          <div class="section-label">// features</div>
+          <h2>Everything you need.<br />Nothing you don't.</h2>
+          <p class="section-desc">
+            RustCast packs a full productivity toolkit into a single hotkey.
+            Zero subscriptions, zero telemetry.
           </p>
-
-          <div class="features">
-            <div class="feature-tag">
-              <span>Lightning Fast</span>
-            </div>
-            <div class="feature-tag">
-              <span>Privacy First</span>
-            </div>
-            <div class="feature-tag">
-              <span>Customizable Themes</span>
-            </div>
+        </div>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-title">App Launcher</div>
+            <p class="feature-desc">
+              Instantly search and open any installed app. Faster than
+              Spotlight, keyboard-only by design.
+            </p>
           </div>
-
-          <div class="actions">
-            <a
-              href="https://getrustcast.umangsurana.com"
-              class="btn btn-primary"
-            >
-              <span>Download for macOS</span>
-              <span class="arrow">↗</span>
-            </a>
-            <a
-              href="https://github.com/unsecretised/rustcast"
-              class="btn btn-secondary"
-            >
-              <span>Star on GitHub</span>
-              <svg class="star-icon" viewBox="0 0 16 16" aria-hidden="true">
-                <path
-                  d="M8 1.3L9.9 5l3.9.6-2.8 2.7.7 3.9L8 10.9 4.3 12.2l.7-3.9L2.2 5.6 6.1 5 8 1.3z"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.2"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </a>
+          <div class="feature-card">
+            <div class="feature-title">Calculator</div>
+            <p class="feature-desc">
+              Type any expression and see the result inline. No need to open a
+              separate app ever again.
+            </p>
           </div>
-
-          <div class="meta">
-            <span>• MIT license</span>
+          <div class="feature-card">
+            <div class="feature-title">Clipboard History</div>
+            <p class="feature-desc">
+              Access your full clipboard history from a keyboard shortcut or by
+              typing <code
+                style="color: var(--rust); font-size: 0.75rem"
+              >cbhist</code>. Everything you've copied, always available.
+            </p>
           </div>
-        </section>
-
-        <aside class="preview-wrap">
-          <div class="preview-frame">
-            <div class="preview-glow"></div>
-            <div class="preview-inner">
-              <img src="rustcast_demo_v0_5_6.png" alt="RustCast Demo" />
-            </div>
-            <div class="ferris-tag">
-              <img
-                class="ferris-icon"
-                src="https://rustacean.net/assets/cuddlyferris.svg"
-                alt="Ferris"
-              />
-              <span>Powered by Rust</span>
-              <img
-                class="ferris-icon"
-                src="https://iced.rs/logo.svg"
-                alt="Iced"
-              />
-            </div>
+          <div class="feature-card">
+            <div class="feature-title">Spotify Control</div>
+            <p class="feature-desc">
+              Play, pause, skip tracks and control volume — all from the
+              launcher without switching windows.
+            </p>
           </div>
-        </aside>
-
-        <div class="stats">
-          <div class="stat">
-            <div class="stat-label">100% Free</div>
+          <div class="feature-card">
+            <div class="feature-title">Quick Web Search</div>
+            <p class="feature-desc">
+              Type your query and add <code
+                style="color: var(--rust); font-size: 0.75rem"
+              >?</code> to instantly search Google (or any custom search
+              engine).
+            </p>
           </div>
-          <div class="stat">
-            <div class="stat-label">Privacy first</div>
+          <div class="feature-card">
+            <div class="feature-title">Unit Conversions</div>
+            <p class="feature-desc">
+              Convert between units right from the search bar. Length, weight,
+              temperature — handled instantly.
+            </p>
           </div>
-          <div class="stat">
-            <div class="stat-label">Blazing fast</div>
+          <div class="feature-card">
+            <div class="feature-title">Emoji Search</div>
+            <p class="feature-desc">
+              Find and copy any emoji by name. Never dig through the character
+              picker again.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-title">Custom Shell Scripts</div>
+            <p class="feature-desc">
+              Define shell aliases and run any command directly from the
+              launcher. Full system access.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-title">Customisable Themes</div>
+            <p class="feature-desc">
+              Configure fonts, colors, background opacity, blur — everything.
+              Use any font from your Font Book.
+            </p>
           </div>
         </div>
-      </section>
-    </main>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- MODES -->
+    <section id="modes">
+      <div class="modes-section">
+        <div class="section-label">// modes</div>
+        <h2>Script your workflow.<br />Define your modes.</h2>
+        <p class="section-desc">
+          Modes let you run any shell script from RustCast. Transform your
+          environment in one keypress — toggle your window manager, start
+          servers, silence notifications, switch contexts.
+        </p>
+
+        <div class="modes-grid">
+          <div class="mode-card">
+            <div class="mode-tag">presentation</div>
+            <div class="mode-title">Presentation Mode</div>
+            <p class="mode-desc">
+              Hide notifications, disable WM effects, switch to a clean desktop.
+              One command for a distraction-free presenting experience.
+            </p>
+          </div>
+          <div class="mode-card">
+            <div class="mode-tag">dev</div>
+            <div class="mode-title">Dev Environment Mode</div>
+            <p class="mode-desc">
+              Use brew to start Postgres, fire up dev servers, enable
+              auto-reload. Your entire dev stack with one alias.
+            </p>
+          </div>
+          <div class="mode-card">
+            <div class="mode-tag">focus</div>
+            <div class="mode-title">Focus Mode</div>
+            <p class="mode-desc">
+              Silence Slack, DND via AppleScript, close distracting apps.
+              Transition into deep work immediately.
+            </p>
+          </div>
+          <div class="mode-card">
+            <div class="mode-tag">custom</div>
+            <div class="mode-title">Anything You Want</div>
+            <p class="mode-desc">
+              Point a mode at any shell script. RustCast runs it. Use AI to help
+              write the scripts — just review before running.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- CONFIG -->
+    <section id="config">
+      <div class="config-section">
+        <div>
+          <div class="section-label">// configuration</div>
+          <h2>Your launcher,<br />your rules.</h2>
+          <p class="section-desc">
+            A single TOML file controls everything. Fonts, colors, hotkeys,
+            search engines, shell aliases, haptic feedback — fully yours.
+          </p>
+          <br />
+          <p class="section-desc">
+            RustCast creates a sensible default config on first launch. Tweak as
+            little or as much as you want.
+          </p>
+          <br />
+          <a
+            href="https://github.com/unsecretised/rustcast-dotfiles"
+            class="btn-ghost"
+            target="_blank"
+            style="display: inline-flex"
+          >
+            View example dotfiles ↗
+          </a>
+        </div>
+        <div class="config-block">
+          <div class="config-bar">
+            <div class="dot-r"></div>
+            <div class="dot-y"></div>
+            <div class="dot-g"></div>
+            <span class="config-filename">config.toml</span>
+          </div>
+          <pre>
+<span class="c-comment"># Global hotkey</span>
+<span class="c-key">toggle_hotkey</span>    = <span class="c-str">"ALT+SHIFT+1"</span>
+<span class="c-key">clipboard_hotkey</span> = <span class="c-str">"SUPER+SHIFT+2"</span>
+<span class="c-key">search_url</span>       = <span class="c-str">"https://google.com/search?q=%s"</span>
+<span class="c-key">haptic_feedback</span>  = <span class="c-val">true</span>
+<span class="c-key">clear_on_enter</span>   = <span class="c-val">true</span>
+<span class="c-key">show_trayicon</span>    = <span class="c-val">true</span>
+
+<span class="c-comment"># Define your custom modes</span>
+<span class="c-head">[modes]</span>
+<span class="c-key">presentation</span> = <span class="c-str">"~/.config/rustcast/scripts/presentation.sh"</span>
+<span class="c-key">dev</span>          = <span class="c-str">"~/.config/rustcast/scripts/dev.sh"</span>
+<span class="c-key">focus</span>        = <span class="c-str">"~/scripts/focus-mode.sh"</span>
+<span class="c-key">othermodes</span>   = <span class="c-str">"~/some/path/to/script"</span>
+<span class="c-comment"># Any shell script. Unlimited power.</span>
+
+<span class="c-head">[theme]</span>
+<span class="c-key">font</span>               = <span class="c-str">"Fira Code"</span>
+<span class="c-key">text_color</span>         = <span class="c-val">[0.95, 0.95, 0.96]</span>
+<span class="c-key">background_color</span>   = <span class="c-val">[0.11, 0.11, 0.13]</span>
+<span class="c-key">background_opacity</span> = <span class="c-val">1.0</span>
+<span class="c-key">show_icons</span>         = <span class="c-val">true</span>
+<span class="c-key">show_scroll_bar</span>    = <span class="c-val">true</span>
+
+<span class="c-head">[[shells]]</span>
+<span class="c-key">command</span>   = <span class="c-str">"echo "</span>
+<span class="c-key">alias</span>     = <span class="c-str">"Variables 1"</span>
+<span class="c-key">alias_lc</span>  = <span class="c-str">"var test"</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- INSTALL -->
+    <section id="install">
+      <div class="install-section">
+        <div class="section-label">// install</div>
+        <h2>Up and running<br />in 30 seconds</h2>
+        <p class="section-desc" style="margin: 0 auto; max-width: 400px">
+          Three ways to get RustCast. Pick the one that feels right.
+        </p>
+
+        <div class="install-tabs">
+          <button class="tab-btn active" onclick="showTab('brew')">
+            Homebrew
+          </button>
+          <button class="tab-btn" onclick="showTab('release')">
+            DMG / ZIP
+          </button>
+          <button class="tab-btn" onclick="showTab('build')">
+            Build from source
+          </button>
+        </div>
+
+        <div id="tab-brew" class="install-block active">
+          <div class="install-block-bar">
+            <span class="install-block-title">Terminal</span>
+            <button class="copy-btn" onclick="copyCode('brew-code')">
+              copy
+            </button>
+          </div>
+          <div class="install-code" id="brew-code">
+            <span class="comment"># Tap the cask and install</span><br>
+            <span class="cmd">brew tap</span> unsecretised/tap<br>
+            <span class="cmd">brew install --cask</span> rustcast<br>
+          </div>
+        </div>
+
+        <div id="tab-release" class="install-block">
+          <div class="install-block-bar">
+            <span class="install-block-title">Manual install</span>
+          </div>
+          <div class="install-code">
+            <span class="comment">Use the .dmg from <a
+                href="https://github.com/unsecretised/rustcast/releases/latest/download/rustcast.dmg"
+              >Github Releases</a></span><br>
+          </div>
+        </div>
+
+        <div id="tab-build" class="install-block">
+          <div class="install-block-bar">
+            <span class="install-block-title">Terminal</span>
+            <button class="copy-btn" onclick="copyCode('build-code')">
+              copy
+            </button>
+          </div>
+          <div class="install-code" id="build-code">
+            <span class="cmd">git clone</span>
+            https://github.com/unsecretised/rustcast.git<br>
+            <span class="cmd">cd</span> rustcast
+            <span class="cmd">cargo install --path .</span> <br>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- CONTRIBUTORS -->
+    <section>
+      <div class="contrib-section">
+        <div class="section-label">// community</div>
+        <h2>Built by the community</h2>
+        <p class="section-desc" style="margin: 0 auto 0; max-width: 480px">
+          RustCast wouldn't exist without contributions, feedback, and support
+          from these folks.
+        </p>
+        <div class="contrib-list">
+          <a
+            href="https://github.com/Nazeofel"
+            class="contrib-chip"
+            target="_blank"
+          >
+            <span class="gh-icon">◉</span> Nazeofel - Sponsor
+          </a>
+          <a
+            href="https://github.com/mnem42"
+            class="contrib-chip"
+            target="_blank"
+          >
+            <span class="gh-icon">◉</span> Mnem42 - Contributor
+          </a>
+          <a
+            href="https://github.com/Random-Scientist"
+            class="contrib-chip"
+            target="_blank"
+          >
+            <span class="gh-icon">◉</span> Random Scientist - Contributor
+          </a>
+          <a
+            href="https://github.com/lemonlambda"
+            class="contrib-chip"
+            target="_blank"
+          >
+            <span class="gh-icon">◉</span> Lemon - Sponsor
+          </a>
+          <a
+            href="https://github.com/zoey-on-github"
+            class="contrib-chip"
+            target="_blank"
+          >
+            <span class="gh-icon">◉</span> Julie / Zoey - feedback
+          </a>
+          <a
+            href="https://github.com/hriztam"
+            class="contrib-chip"
+            target="_blank"
+          >
+            <span class="gh-icon">◉</span> Hriztam - Contributor
+          </a>
+        </div>
+        <div class="easter-note" style="margin-top: 2rem">
+          🥚 Sponsors get a secret <strong>easter egg</strong> inside RustCast.
+          A dollar is all it takes.
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- CTA -->
+    <section class="cta-section">
+      <div class="section-label">// get started</div>
+      <h2>Stop reaching for<br />the mouse.</h2>
+      <p>
+        RustCast is free, open source, and built for people who care about
+        speed. Install it in 30 seconds and never look back.
+      </p>
+      <div class="hero-buttons" style="justify-content: center">
+        <a href="https://getrustcast.umangsurana.com" class="btn-primary"
+        >↓ Download for macOS</a>
+        <a
+          href="https://discord.gg/bDfNYPbnC5"
+          class="btn-ghost"
+          target="_blank"
+        >Join Discord</a>
+      </div>
+    </section>
+
+    <footer>
+      <div class="footer-left">
+        RustCast — MIT license · Made with Rust + Iced
+      </div>
+      <ul class="footer-links">
+        <li>
+          <a href="https://github.com/unsecretised/rustcast" target="_blank"
+          >GitHub</a>
+        </li>
+        <li>
+          <a
+            href="https://github.com/unsecretised/rustcast/releases"
+            target="_blank"
+          >Releases</a>
+        </li>
+        <li>
+          <a href="https://discord.gg/bDfNYPbnC5" target="_blank">Discord</a>
+        </li>
+        <li>
+          <a
+            href="https://github.com/unsecretised/rustcast/blob/master/CONTRIBUTING.md"
+            target="_blank"
+          >Contribute</a>
+        </li>
+      </ul>
+    </footer>
+
+    <script>
+      function showTab(tab) {
+        document.querySelectorAll(".install-block").forEach((el) =>
+          el.classList.remove("active")
+        );
+        document.querySelectorAll(".tab-btn").forEach((el) =>
+          el.classList.remove("active")
+        );
+        document.getElementById("tab-" + tab).classList.add("active");
+        event.target.classList.add("active");
+      }
+
+      function copyCode(id) {
+        const el = document.getElementById(id);
+        const text = el.innerText.replace(/^#.*/gm, "").trim().split(
+          "\n",
+        ).filter((l) => l.trim()).join("\n");
+        navigator.clipboard.writeText(text).then(() => {
+          const btn = event.target;
+          btn.textContent = "copied!";
+          setTimeout(() => btn.textContent = "copy", 1500);
+        });
+      }
+
+      // Typing animation for demo
+      const input = document.querySelector(".search-input");
+      const phrases = [
+        "spotify",
+        "cbhist",
+        "2+2*10",
+        "15 kg in lbs",
+        "😎",
+        "echo hello",
+      ];
+      let pi = 0, ci = 0, deleting = false;
+
+      function type() {
+        const phrase = phrases[pi];
+        if (!deleting) {
+          input.value = phrase.slice(0, ++ci);
+          if (ci === phrase.length) {
+            deleting = true;
+            setTimeout(type, 1400);
+            return;
+          }
+        } else {
+          input.value = phrase.slice(0, --ci);
+          if (ci === 0) {
+            deleting = false;
+            pi = (pi + 1) % phrases.length;
+            setTimeout(type, 300);
+            return;
+          }
+        }
+        setTimeout(type, deleting ? 60 : 90);
+      }
+      setTimeout(type, 1800);
+    </script>
   </body>
 </html>
