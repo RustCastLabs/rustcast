@@ -10,6 +10,7 @@ if security list-keychains | grep -q "$KEYCHAIN"; then
 else
   security create-keychain -p "$MACOS_CI_KEYCHAIN_PWD" "$KEYCHAIN"
 fi
+xcrun notarytool store-credentials "notarytool-profile" --apple-id "$MACOS_NOTARISATION_APPLE_ID" --team-id "$MACOS_NOTARY_TEAM_ID" --password "$MACOS_NOTARIZATION_PWD"
 
 security default-keychain -s "$KEYCHAIN"
 security unlock-keychain -p "$MACOS_CI_KEYCHAIN_PWD" "$KEYCHAIN"

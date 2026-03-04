@@ -28,6 +28,8 @@ echo "DMG_PATH=$DMG_PATH" >> "$GITHUB_ENV"
 if [[ -n "$MACOS_NOTARY_KEY_ID" ]]; then
   echo "$MACOS_NOTARY_KEY" | base64 --decode > notary.key
 
+  xcrun notarytool store-credentials "notarytool-profile" --apple-id "$MACOS_NOTARISATION_APPLE_ID" --team-id "$MACOS_NOTARY_TEAM_ID" --password "$MACOS_NOTARIZATION_PWD"
+
   xcrun notarytool submit "$DMG_PATH" \
     --key notary.key \
     --key-id "$MACOS_NOTARY_KEY_ID" \
