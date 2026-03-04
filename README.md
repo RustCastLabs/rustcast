@@ -6,7 +6,7 @@
 <h1 align="center">RustCast</h1>
 
 <p align="center">
-  An open-source, Rust-powered alternative to Raycast/PowerToys — a fast popup launcher for apps, utilities, and workflows.
+  An open-source, Rust-powered productivity, blazing fast popup launcher for apps, utilities, and workflows.
 </p>
 
 <p align="center">
@@ -27,11 +27,11 @@
   </a>
 </p>
 
-> RustCast, Raycast and PowerToys are productivity tools. They provide a popup
-> search bar that people can use to do many things, like opening apps,
-> calculators, quick-notes, etc.
+**Config docs:** https://github.com/unsecretised/rustcast/wiki
 
-**Community:** https://discord.gg/bDfNYPbnC5 **Plugins**:
+**Community:** https://discord.gg/bDfNYPbnC5
+
+**Plugins**:
 [RustCast Library for shell scripts](https://github.com/unsecretised/rustcast-library)
 
 ![RustCast Demo](./docs/rustcast-latest-demo.png)
@@ -40,47 +40,23 @@
 
 ### Via Homebrew:
 
-> Requires Homebrew
-
 ```
-brew tap unsecretised/tap
-brew install --cask rustcast
+brew install --cask unsecretised/tap/rustcast
 ```
-
-Then launch it via launchpad or spotlight (hopefully the last time you have to
-use spotlight :) Have fun!)
 
 ### Via github releases
 
-1. Go to the
-   [releases page](https://github.com/unsecretised/rustcast/releases/latest)
-2. Download the `.zip` file or `.dmg` file
-3. If `.dmg` file, open it and drag the `RustCast.app` to your `/Applications/`
-   (you should be guided)
-4. If `.zip` file, extract the `RustCast.app` to your `/Applications/`
-
-### Build it youself:
-
-1. Clone the repo with `git clone https://github.com/unsecretised/rustcast.git`
-1. Install `cargo bundle` with `cargo install cargo-bundle` (Requires cargo to
-   be installed)
-1. Run `cargo bundle --release` to build RustCast for your system (The App Dir
-   will be available at: `target/release/bundle/osx/RustCast.app`)
-1. Move the `RustCast.app` directory to your `/Applications/` folder, and launch
-   RustCast
+1. Download the dmg from this link
+   [https://github.com/unsecretised/rustcast/releases/latest/download/rustcast.dmg](https://github.com/unsecretised/rustcast/releases/latest/download/rustcast.dmg)
 
 ## Config:
 
-> I have a high chance of forgetting to update the config docs, but even if I
-> do, you will most likely be able to find my config and a list of the latest
-> config options easily
-> [here](https://github.com/unsecretised/rustcast-dotfiles)
+Full config docs can be found [here](https://github.com/unsecretised/rustcast/wiki)
 
 The config file should be located at: `~/.config/rustcast/config.toml` RustCast
 creates the default configuration for you, but it does use its
 [default options](docs/default.toml) Here's a full list of what all you can
-configure [The list](docs/config.toml) The blurring is still a bit wonky, and
-will be fixed in the upcoming releases
+configure [The list](docs/config.toml). 
 
 ## Feature list:
 
@@ -108,6 +84,8 @@ will be fixed in the upcoming releases
       [Hriztam](https://github.com/hriztam)
 - [x] Emoji Searching (19/1/2026) Allows people to search for emojis through
       rustcast
+- [x] RustCast modes (2/3/2026)
+- [x] Better documentation for the config (3/3/2026)
 
 ### Planned:
 
