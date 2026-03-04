@@ -415,12 +415,28 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                     display_name: format!("Search for: {}", tile.query),
                     search_name: String::new(),
                 }];
+                return single_item_resize_task(id);
             } else if tile.query_lc == "cbhist" {
                 task = task.chain(Task::done(Message::SwitchToPage(Page::ClipboardHistory)));
                 tile.page = Page::ClipboardHistory
             } else if tile.query_lc == "main" && tile.page != Page::Main {
                 task = task.chain(Task::done(Message::SwitchToPage(Page::Main)));
                 tile.page = Page::Main;
+            } else if tile.query_lc.starts_with(">") && tile.page == Page::Main {
+                tile.results = vec![App {
+                    ranking: 20,
+                    open_command: AppCommand::Function(Function::RunShellCommand(
+                        tile.query.strip_prefix(">").unwrap_or("").to_string(),
+                    )),
+                    display_name: format!(
+                        "Shell Command: {}",
+                        tile.query.strip_prefix(">").unwrap_or("")
+                    ),
+                    icons: None,
+                    search_name: "".to_string(),
+                    desc: "Shell Command".to_string(),
+                }];
+                return single_item_resize_task(id);
             }
             tile.handle_search_query_changed();
 
