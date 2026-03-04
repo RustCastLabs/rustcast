@@ -34,7 +34,7 @@
 **Plugins**:
 [RustCast Library for shell scripts](https://github.com/unsecretised/rustcast-library)
 
-![RustCast Demo](./docs/rustcast.mp4)
+![RustCast Demo](./docs/rustcast-latest-demo.png)
 
 ## Installation:
 
