@@ -51,12 +51,13 @@ brew install --cask unsecretised/tap/rustcast
 
 ## Config:
 
-Full config docs can be found [here](https://github.com/unsecretised/rustcast/wiki)
+Full config docs can be found
+[here](https://github.com/unsecretised/rustcast/wiki)
 
 The config file should be located at: `~/.config/rustcast/config.toml` RustCast
 creates the default configuration for you, but it does use its
 [default options](docs/default.toml) Here's a full list of what all you can
-configure [The list](docs/config.toml). 
+configure [The list](docs/config.toml).
 
 ## Feature list:
 
