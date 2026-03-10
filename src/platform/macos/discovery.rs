@@ -236,12 +236,20 @@ fn query_app(url: impl AsRef<NSURL>, store_icons: bool) -> Option<App> {
         return None;
     }
 
-    let name = get_string(ns_string!("CFBundleDisplayName"))
-        .or_else(|| get_string(ns_string!("CFBundleName")))
-        .or_else(|| {
-            path.file_stem()
-                .map(|stem| stem.to_string_lossy().into_owned())
-        })?;
+    let plist_name = get_string(ns_string!("CFBundleDisplayName"))
+        .or_else(|| get_string(ns_string!("CFBundleName")));
+
+    let file_path_name = path
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned());
+
+    let name = if let Some(name) = file_path_name {
+        name
+    } else if let Some(name) = plist_name {
+        name
+    } else {
+        return None;
+    };
 
     let icon = icon_of_path_ns(path.to_str().unwrap_or(&name)).unwrap_or(vec![]);
     let icons = if store_icons {
