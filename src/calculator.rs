@@ -14,11 +14,6 @@
 //!   "log(100)"       => 2
 //!   "log(2, 8)"      => 3
 
-pub fn is_valid_expr(s: &str) -> bool {
-    let mut p = Parser::new(s);
-    p.parse_expr().and_then(|_| p.expect(Token::End)).is_ok()
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Number(f64),

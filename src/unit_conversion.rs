@@ -1,5 +1,14 @@
 //! Unit conversion parsing and calculation.
 
+use crate::{
+    app::{
+        ToApp,
+        apps::{App, AppCommand},
+    },
+    clipboard::ClipBoardContentType,
+    commands::Function,
+};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnitCategory {
     Length,
@@ -231,6 +240,31 @@ const UNITS: &[UnitDef] = &[
         offset: -273.15,
     },
 ];
+
+impl ToApp for ConversionResult {
+    fn to_app(&self) -> crate::app::apps::App {
+        let source = format!(
+            "{} {}",
+            format_number(self.source_value),
+            self.source_unit.name
+        );
+        let target = format!(
+            "{} {}",
+            format_number(self.target_value),
+            self.target_unit.name
+        );
+        App {
+            ranking: 0,
+            open_command: AppCommand::Function(Function::CopyToClipboard(
+                ClipBoardContentType::Text(target.clone()),
+            )),
+            desc: source,
+            icons: None,
+            display_name: target,
+            search_name: String::new(),
+        }
+    }
+}
 
 pub fn convert_query(query: &str) -> Option<Vec<ConversionResult>> {
     let parsed = parse_query(query)?;
