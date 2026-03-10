@@ -278,6 +278,8 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                     .unwrap_or(tile.hotkeys.clipboard_hotkey),
             };
 
+            tile.hotkeys.register();
+
             tile.theme = new_config.theme.to_owned().into();
             tile.config = new_config;
             tile.options = AppIndex::from_apps(new_options);

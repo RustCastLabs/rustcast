@@ -10,7 +10,7 @@ use crate::{app::apps::App, platform::default_app_paths};
 
 use arboard::Clipboard;
 use global_hotkey::hotkey::HotKey;
-use global_hotkey::{GlobalHotKeyEvent, HotKeyState};
+use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState};
 
 use iced::futures::SinkExt;
 use iced::futures::channel::mpsc::{Sender, channel};
@@ -134,6 +134,14 @@ pub struct Tile {
 pub struct Hotkeys {
     pub toggle: HotKey,
     pub clipboard_hotkey: HotKey,
+}
+
+impl Hotkeys {
+    pub fn register(&self) {
+        let manager = GlobalHotKeyManager::new().unwrap();
+        manager.register(self.toggle).ok();
+        manager.register(self.clipboard_hotkey).ok();
+    }
 }
 
 impl Tile {
