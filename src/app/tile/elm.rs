@@ -11,6 +11,7 @@ use iced::{Element, Task};
 use iced::{Length::Fill, widget::text_input};
 
 use log::info;
+use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSliceMut;
 
 use crate::app::pages::emoji::emoji_page;

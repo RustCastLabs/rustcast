@@ -28,12 +28,12 @@ use objc2_app_kit::NSRunningApplication;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tray_icon::TrayIcon;
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs;
-use std::ops::Bound;
+use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
-use std::{collections::BTreeMap, path::Path};
 
 /// This is a wrapper around the sender to disable dropping
 #[derive(Clone, Debug)]
@@ -47,17 +47,21 @@ impl Drop for ExtSender {
 /// All the indexed apps that rustcast can search for
 #[derive(Clone, Debug)]
 struct AppIndex {
-    by_name: BTreeMap<String, App>,
+    by_name: HashMap<String, App>,
 }
 
 impl AppIndex {
     /// Search for an element in the index that starts with the provided prefix
-    fn search_prefix<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item = &'a App> + 'a {
-        self.by_name
-            .range::<str, _>((Bound::Included(prefix), Bound::Unbounded))
-            .take_while(move |(k, _)| k.starts_with(prefix))
-            .map(|(_, v)| v)
+    fn search_prefix<'a>(&'a self, prefix: &'a str) -> impl ParallelIterator<Item = &'a App> + 'a {
+        self.by_name.par_iter().filter_map(move |(name, app)| {
+            if name.starts_with(prefix) || name.contains(format!(" {prefix}").as_str()) {
+                Some(app)
+            } else {
+                None
+            }
+        })
     }
+
     fn update_ranking(&mut self, name: &str) {
         let app = match self.by_name.get_mut(name) {
             Some(a) => a,
@@ -69,18 +73,18 @@ impl AppIndex {
 
     fn empty() -> AppIndex {
         AppIndex {
-            by_name: BTreeMap::new(),
+            by_name: HashMap::new(),
         }
     }
 
     /// Factory function for creating
     pub fn from_apps(options: Vec<App>) -> Self {
-        let mut bmap = BTreeMap::new();
+        let mut hmap = HashMap::new();
         for app in options {
-            bmap.insert(app.search_name.clone(), app);
+            hmap.insert(app.search_name.clone(), app);
         }
 
-        AppIndex { by_name: bmap }
+        AppIndex { by_name: hmap }
     }
 }
 

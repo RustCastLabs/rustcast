@@ -11,6 +11,7 @@ use iced::widget::operation::AbsoluteOffset;
 use iced::window;
 use iced::window::Id;
 use log::info;
+use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSliceMut;
 
 use crate::app::ToApp;
