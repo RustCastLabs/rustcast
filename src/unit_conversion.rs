@@ -262,6 +262,7 @@ impl ToApp for ConversionResult {
             icons: None,
             display_name: target,
             search_name: String::new(),
+            is_ai_response: false,
         }
     }
 }
