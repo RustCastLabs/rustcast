@@ -236,6 +236,7 @@ impl ToApp for Shelly {
             icons: icon,
             display_name: self_clone.alias,
             search_name: self_clone.alias_lc,
+            is_ai_response: false,
         }
     }
 }

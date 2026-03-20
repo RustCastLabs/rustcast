@@ -267,6 +267,7 @@ fn query_app(url: impl AsRef<NSURL>, store_icons: bool) -> Option<App> {
         ranking: 0,
         display_name: name.clone(),
         search_name: name.to_lowercase(),
+        is_ai_response: false,
         desc: "Application".to_string(),
         icons,
         open_command: AppCommand::Function(Function::OpenApp(path.to_string_lossy().into_owned())),

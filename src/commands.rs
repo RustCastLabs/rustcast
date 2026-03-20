@@ -166,6 +166,7 @@ impl ToApp for DirEntry {
             icons: None,
             display_name: self.file_name().to_str().unwrap_or("").to_string(),
             search_name: "".to_string(),
+            is_ai_response: false,
         }
     }
 }
