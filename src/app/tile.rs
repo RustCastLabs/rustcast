@@ -467,9 +467,6 @@ fn handle_file_search() -> impl futures::Stream<Item = Message> {
             if receiver.changed().await.is_err() {
                 return;
             }
-
-            // Debounce: wait 100ms then take the latest value.
-            tokio::time::sleep(Duration::from_millis(100)).await;
             receiver.borrow_and_update();
 
             // Kill previous mdfind if still running.
