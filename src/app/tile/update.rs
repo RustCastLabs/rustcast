@@ -699,13 +699,13 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
     match tile.page {
         Page::FileSearch => {
             if let Some(ref sender) = tile.file_search_sender {
-              tile.results.clear();
-              sender
-                .send((tile.query_lc.clone(), tile.config.search_dirs.clone()))
-                .ok();
+                tile.results.clear();
+                sender
+                    .send((tile.query_lc.clone(), tile.config.search_dirs.clone()))
+                    .ok();
             }
-            
-            return task
+
+            return task;
         }
         _ => tile.handle_search_query_changed(),
     }
