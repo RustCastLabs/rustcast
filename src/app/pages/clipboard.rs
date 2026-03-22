@@ -81,7 +81,7 @@ pub fn clipboard_view(
                 Column::from_iter(clipboard_content.iter().enumerate().map(|(i, content)| {
                     content
                         .to_app()
-                        .render(theme.clone(), i as u32, focussed_id)
+                        .render(theme.clone(), i as u32, focussed_id, None)
                 }))
                 .width(WINDOW_WIDTH / 3.),
             )

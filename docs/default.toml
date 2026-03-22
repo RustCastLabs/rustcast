@@ -7,6 +7,7 @@ haptic_feedback = false
 show_trayicon = true
 shells = []
 clipboard_hotkey = "SUPER+SHIFT+C"
+recent_actions_limit = 5
 
 [buffer_rules]
 clear_on_hide = true

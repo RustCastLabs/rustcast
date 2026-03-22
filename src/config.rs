@@ -19,6 +19,7 @@ use crate::{
 pub struct Config {
     pub toggle_hotkey: String,
     pub clipboard_hotkey: String,
+    pub recent_actions_limit: usize,
     pub buffer_rules: Buffer,
     pub theme: Theme,
     pub placeholder: String,
@@ -39,6 +40,7 @@ impl Default for Config {
         Self {
             toggle_hotkey: "ALT+SPACE".to_string(),
             clipboard_hotkey: "SUPER+SHIFT+C".to_string(),
+            recent_actions_limit: 5,
             buffer_rules: Buffer::default(),
             theme: Theme::default(),
             placeholder: String::from("Time to be productive!"),

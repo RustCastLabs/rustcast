@@ -45,7 +45,14 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             focus_this_app();
             tile.focused = true;
             tile.visible = true;
-            Task::none()
+
+            if tile.page == Page::Main && tile.query_lc.is_empty() {
+                window::latest()
+                    .map(|x| x.unwrap())
+                    .map(|id| Message::SearchQueryChanged(String::new(), id))
+            } else {
+                Task::none()
+            }
         }
 
         Message::UpdateAvailable => {
@@ -205,34 +212,8 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             )
         }
 
-        Message::OpenFocused => {
-            // TODO: update ranking here
-            match tile.results.get(tile.focus_id as usize) {
-                Some(App {
-                    search_name: name,
-                    open_command: AppCommand::Function(func),
-                    ..
-                }) => {
-                    info!("Updating ranking for: {name}");
-                    tile.options.update_ranking(name);
-                    Task::done(Message::RunFunction(func.to_owned()))
-                }
-                Some(App {
-                    search_name: name,
-                    open_command: AppCommand::Message(msg),
-                    ..
-                }) => {
-                    info!("Updating ranking for: {name}");
-                    tile.options.update_ranking(name);
-                    Task::done(msg.to_owned())
-                }
-                Some(App {
-                    open_command: AppCommand::Display,
-                    ..
-                }) => Task::done(Message::ReturnFocus),
-                None => Task::none(),
-            }
-        }
+        Message::OpenFocused => Task::done(Message::OpenResult(tile.focus_id)),
+        Message::OpenResult(id) => open_result(tile, id as usize),
 
         Message::ReloadConfig => {
             info!("Reloading config");
@@ -273,6 +254,7 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             tile.theme = new_config.theme.to_owned().into();
             tile.config = new_config;
             tile.options = AppIndex::from_apps(new_options);
+            tile.refresh_recent_actions();
             Task::none()
         }
 
@@ -330,10 +312,19 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             } else {
                 Task::none()
             };
+
+            let refresh_empty_main_query = if tile.page == Page::Main {
+                window::latest()
+                    .map(|x| x.unwrap())
+                    .map(|id| Message::SearchQueryChanged(String::new(), id))
+            } else {
+                Task::none()
+            };
             Task::batch([
                 Task::done(Message::ClearSearchQuery),
                 Task::done(Message::ClearSearchResults),
                 task,
+                refresh_empty_main_query,
             ])
         }
 
@@ -493,6 +484,54 @@ fn zero_item_resize_task(id: Id) -> Task<Message> {
     Task::done(Message::ResizeWindow(id, DEFAULT_WINDOW_HEIGHT))
 }
 
+fn resize_for_results_count(id: Id, count: usize) -> Task<Message> {
+    if count == 0 {
+        return zero_item_resize_task(id);
+    }
+    if count == 1 {
+        return single_item_resize_task(id);
+    }
+
+    let max_elem = min(5, count);
+    Task::done(Message::ResizeWindow(
+        id,
+        ((max_elem * 55) + 35 + DEFAULT_WINDOW_HEIGHT as usize) as f32,
+    ))
+}
+
+fn open_result(tile: &mut Tile, id: usize) -> Task<Message> {
+    let Some(app) = tile.results.get(id).cloned() else {
+        return Task::none();
+    };
+
+    let search_name = app.search_name.clone();
+    let track_recent_action = tile.page == Page::Main
+        && !search_name.is_empty()
+        && tile.action_exists(&search_name)
+        && matches!(
+            &app.open_command,
+            AppCommand::Function(_) | AppCommand::Message(_)
+        );
+
+    if track_recent_action {
+        tile.record_recent_action(&search_name);
+    }
+
+    match app.open_command {
+        AppCommand::Function(func) => {
+            info!("Updating ranking for: {search_name}");
+            tile.options.update_ranking(&search_name);
+            Task::done(Message::RunFunction(func))
+        }
+        AppCommand::Message(msg) => {
+            info!("Updating ranking for: {search_name}");
+            tile.options.update_ranking(&search_name);
+            Task::done(msg)
+        }
+        AppCommand::Display => Task::done(Message::ReturnFocus),
+    }
+}
+
 /// Handling the lemon easter egg icon
 fn lemon_icon_handle() -> Option<Handle> {
     image::ImageReader::new(Cursor::new(include_bytes!("../../../docs/lemon.png")))
@@ -518,6 +557,11 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
                 .map(|x| x.to_owned())
                 .collect()
         };
+    }
+
+    if tile.page == Page::Main && tile.query_lc.is_empty() {
+        tile.results = tile.recent_results();
+        return resize_for_results_count(id, tile.results.len());
     }
 
     if tile.query_lc.is_empty()

@@ -23,6 +23,9 @@ show_trayicon = true
 # hotkey for opening clipboard history
 clipboard_hotkey = "SUPER+SHIFT+2"
 
+# number of recent actions to show when search is empty
+recent_actions_limit = 5
+
 # Create a presentation.sh file and you can make it do pretty much anything 
 # Example usage: 
 # 	- turn on / off your WM in different "modes"
@@ -66,4 +69,3 @@ command = "echo "
 # icon_path is optional
 alias = "Variables 1" # the name that will be displayed in the results
 alias_lc = "var test" # the name used to search for it
-
