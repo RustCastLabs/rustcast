@@ -10,7 +10,8 @@ use crate::app::{
 use crate::clipboard::ClipBoardContentType;
 use crate::config::Config;
 use crate::debounce::Debouncer;
-use crate::platform::{default_app_paths, icon_of_path_ns};
+use crate::platform::default_app_paths;
+use crate::platform::macos::discovery::icon_of_path_ns;
 
 use arboard::Clipboard;
 use block2::RcBlock;

@@ -56,14 +56,3 @@ pub fn get_installed_apps(store_icons: bool) -> Vec<App> {
 pub fn get_installed_apps(store_icons: bool) -> Vec<App> {
     self::cross::get_installed_apps(store_icons)
 }
-
-/// This loads the system icon for a file path, returning PNG bytes
-#[cfg(target_os = "macos")]
-pub fn icon_of_path_ns(path: &str) -> Option<Vec<u8>> {
-    self::macos::icon_of_path_ns(path)
-}
-
-#[cfg(not(target_os = "macos"))]
-pub fn icon_of_path_ns(_path: &str) -> Option<Vec<u8>> {
-    None
-}
