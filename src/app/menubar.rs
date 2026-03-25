@@ -39,14 +39,14 @@ pub fn menu_icon(config: Config, sender: ExtSender) -> TrayIcon {
 }
 
 pub fn menu_builder(config: Config, sender: ExtSender, update_item: bool) -> Menu {
-    let hotkey = config.toggle_hotkey.parse::<HotKey>().unwrap();
+    let hotkey = config.toggle_hotkey.parse::<HotKey>().ok();
 
     let mut modes = config.modes;
     if !modes.contains_key("default") {
         modes.insert("Default".to_string(), "default".to_string());
     }
 
-    init_event_handler(sender, hotkey.id());
+    init_event_handler(sender, hotkey.map(|x| x.id));
 
     Menu::with_items(&[
         &MenuItem::with_id(
@@ -86,7 +86,7 @@ fn get_image() -> DynamicImage {
         .unwrap()
 }
 
-fn init_event_handler(sender: ExtSender, hotkey_id: u32) {
+fn init_event_handler(sender: ExtSender, hotkey_id: Option<u32>) {
     let runtime = Runtime::new().unwrap();
 
     MenuEvent::set_event_handler(Some(move |x: MenuEvent| {
@@ -107,12 +107,11 @@ fn init_event_handler(sender: ExtSender, hotkey_id: u32) {
                 open_url("https://github.com/unsecretised/rustcast/issues/new");
             }
             "show_rustcast" => {
-                runtime.spawn(async move {
-                    sender
-                        .clone()
-                        .try_send(Message::KeyPressed(hotkey_id))
-                        .unwrap();
-                });
+                if let Some(hk) = hotkey_id {
+                    runtime.spawn(async move {
+                        sender.clone().try_send(Message::KeyPressed(hk)).unwrap();
+                    });
+                }
             }
             "update" => {
                 open_url("https://github.com/unsecretised/rustcast/releases/latest");
@@ -179,12 +178,12 @@ fn mode_item(modes: HashMap<String, String>) -> Submenu {
     Submenu::with_items("Modes", true, &items).unwrap()
 }
 
-fn open_item(hotkey: HotKey) -> MenuItem {
+fn open_item(hotkey: Option<HotKey>) -> MenuItem {
     MenuItem::with_id(
         "show_rustcast",
         "Toggle View",
         true,
-        Some(Accelerator::new(Some(hotkey.mods), hotkey.key)),
+        hotkey.map(|hk| Accelerator::new(Some(hk.mods), hk.key)),
     )
 }
 
