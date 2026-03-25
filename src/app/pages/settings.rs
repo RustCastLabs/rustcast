@@ -127,6 +127,19 @@ pub fn settings_page(config: Config) -> Element<'static, Message> {
     ]);
 
     let theme_clone = theme.clone();
+    let auto_suggest = settings_item_row([
+        settings_hint_text(theme.clone(), "Suggestions on open"),
+        checkbox(config.auto_suggest)
+            .style(move |_, _| settings_checkbox_style(&theme_clone))
+            .on_toggle(|input| Message::SetConfig(SetConfigFields::AutoSuggest(input)))
+            .into(),
+        notice_item(
+            theme.clone(),
+            "If an empty query should give you your most used actions",
+        ),
+    ]);
+
+    let theme_clone = theme.clone();
     let show_scrollbar = settings_item_row([
         settings_hint_text(theme.clone(), "Show scrollbar"),
         checkbox(config.theme.show_scroll_bar)
@@ -350,6 +363,7 @@ pub fn settings_page(config: Config) -> Element<'static, Message> {
         debounce.into(),
         haptic.into(),
         tray_icon.into(),
+        auto_suggest.into(),
         show_scrollbar.into(),
         clear_on_hide.into(),
         clear_on_enter.into(),

@@ -125,6 +125,7 @@ pub enum SetConfigFields {
     SearchUrl(String),
     HapticFeedback(bool),
     ShowMenubarIcon(bool),
+    AutoSuggest(bool),
     Modes(Editable<(String, String)>),
     Aliases(Editable<(String, String)>),
     SearchDirs(Editable<Vec<String>>),

@@ -29,6 +29,7 @@ pub struct Config {
     pub modes: HashMap<String, String>,
     pub aliases: HashMap<String, String>,
     pub search_dirs: Vec<String>,
+    pub auto_suggest: bool,
     pub log_path: String,
     pub debounce_delay: u64,
 }
@@ -45,6 +46,7 @@ impl Default for Config {
             search_url: "https://duckduckgo.com/search?q=%s".to_string(),
             haptic_feedback: false,
             show_trayicon: true,
+            auto_suggest: true,
             search_dirs: vec!["~".to_string()],
             log_path: "/tmp/rustcast.log".to_string(),
             modes: HashMap::new(),
