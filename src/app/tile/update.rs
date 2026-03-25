@@ -522,17 +522,6 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             Task::none()
         }
 
-        Message::FileSearchIcons(icons) => {
-            if tile.page == Page::FileSearch {
-                for (idx, handle) in icons {
-                    if let Some(app) = tile.results.get_mut(idx) {
-                        app.icons = Some(handle);
-                    }
-                }
-            }
-            Task::none()
-        }
-
         Message::SearchQueryChanged(input, id) => {
             tile.focus_id = 0;
 

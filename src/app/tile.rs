@@ -3,18 +3,13 @@ pub mod elm;
 pub mod update;
 
 use crate::app::apps::App;
-use crate::app::{
-    ArrowKey, FILE_SEARCH_BATCH_SIZE, FILE_SEARCH_ICON_BATCH_SIZE, FILE_SEARCH_MAX_ICONS,
-    FILE_SEARCH_MAX_RESULTS, Message, Move, Page,
-};
+use crate::app::{ArrowKey, Message, Move, Page};
 use crate::clipboard::ClipBoardContentType;
 use crate::config::Config;
 use crate::debounce::Debouncer;
 use crate::platform::default_app_paths;
-use crate::platform::macos::discovery::icon_of_path_ns;
 
 use arboard::Clipboard;
-use block2::RcBlock;
 use global_hotkey::hotkey::HotKey;
 use global_hotkey::{GlobalHotKeyEvent, HotKeyState};
 
@@ -31,20 +26,14 @@ use iced::{event, window};
 use log::{info, warn};
 use objc2::rc::Retained;
 use objc2_app_kit::NSRunningApplication;
-use objc2_foundation::{
-    NSArray, NSDate, NSDefaultRunLoopMode, NSMetadataItemPathKey, NSMetadataQuery,
-    NSMetadataQueryDidFinishGatheringNotification, NSNotificationCenter, NSPredicate, NSRunLoop,
-    NSString,
-};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::slice::ParallelSliceMut;
+use tokio::io::AsyncBufReadExt;
 use tray_icon::TrayIcon;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::str::FromStr;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 /// This is a wrapper around the sender to disable dropping
@@ -384,212 +373,65 @@ fn handle_clipboard_history() -> impl futures::Stream<Item = Message> {
     })
 }
 
-/// This represents the messages sent from the NSMetadataQuery thread back to the iced subscription
-enum QueryThreadMsg {
-    Batch(Vec<crate::app::apps::App>),
-    Clear,
-    Icons(Vec<(usize, iced::widget::image::Handle)>),
-}
-
-/// This is the subscription function that bridges the NSMetadataQuery thread to the UI
+/// Read mdfind stdout line-by-line, sending batched results to the UI.
 ///
-/// Creates a watch channel for query input and a tokio mpsc channel for results.
-/// Spawns a dedicated thread for NSMetadataQuery (which needs an NSRunLoop).
-fn handle_file_search() -> impl futures::Stream<Item = Message> {
-    stream::channel(100, async |mut output| {
-        let (watch_tx, watch_rx) =
-            tokio::sync::watch::channel((String::new(), Vec::<String>::new()));
-        output
-            .send(Message::SetFileSearchSender(watch_tx))
-            .await
-            .expect("Failed to send file search sender.");
-
-        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::channel::<QueryThreadMsg>(64);
-
-        std::thread::Builder::new()
-            .name("nsmetadata-query".into())
-            .spawn(move || metadata_query_thread(watch_rx, msg_tx))
-            .expect("Failed to spawn metadata query thread.");
-
-        while let Some(msg) = msg_rx.recv().await {
-            match msg {
-                QueryThreadMsg::Batch(apps) => {
-                    output.send(Message::FileSearchResult(apps)).await.ok();
-                }
-                QueryThreadMsg::Clear => {
-                    output.send(Message::FileSearchClear).await.ok();
-                }
-                QueryThreadMsg::Icons(icons) => {
-                    output.send(Message::FileSearchIcons(icons)).await.ok();
-                }
-            }
-        }
-    })
-}
-
-/// This configures the NSMetadataQuery predicate and search scopes
-///
-/// Uses NSPredicate LIKE[cd] for case+diacritic insensitive glob matching.
-/// Whitespace-separated tokens are joined with `*` wildcards so "img jpg"
-/// matches filenames containing "img" followed by "jpg".
-///
-/// NSPredicate LIKE uses `*` (multi-char) and `?` (single-char) as wildcards.
-/// The underscore `_` is NOT special in LIKE (unlike SQL), so filenames like
-/// `IMG_1234.jpg` match correctly.
-fn configure_metadata_query(
-    query: &objc2_foundation::NSMetadataQuery,
-    search_text: &str,
-    dirs: &[String],
+/// Returns when stdout reaches EOF, the receiver signals a new query, or
+/// max results are reached. Caller is responsible for process lifetime.
+async fn read_mdfind_results(
+    stdout: tokio::process::ChildStdout,
     home_dir: &str,
+    receiver: &mut tokio::sync::watch::Receiver<(String, Vec<String>)>,
+    output: &mut iced::futures::channel::mpsc::Sender<Message>,
 ) {
-    assert!(!search_text.is_empty(), "Search text must not be empty.");
-    assert!(!home_dir.is_empty(), "Home dir must not be empty.");
+    use crate::app::{FILE_SEARCH_BATCH_SIZE, FILE_SEARCH_MAX_RESULTS};
 
-    // Escape LIKE wildcards in each token, then join with `*`.
-    let tokens: Vec<String> = search_text
-        .split_whitespace()
-        .map(|t| t.replace('*', "\\*").replace('?', "\\?"))
-        .collect();
-    assert!(!tokens.is_empty(), "Tokens must not be empty.");
-    let pattern = format!("*{}*", tokens.join("*"));
-
-    // Use predicateWithFormat with %@ so the pattern is properly quoted.
-    let format_str = NSString::from_str("kMDItemDisplayName LIKE[cd] %@");
-    let pattern_ns = NSString::from_str(&pattern);
-    let pattern_obj: objc2::rc::Retained<objc2::runtime::AnyObject> =
-        objc2::rc::Retained::into_super(objc2::rc::Retained::into_super(pattern_ns));
-    let args = NSArray::from_retained_slice(&[pattern_obj]);
-    // SAFETY: predicateWithFormat_argumentArray is an NSPredicate class method that
-    // parses the format string and substitutes %@ with the argument array values.
-    // The format string is a compile-time constant and args contains a single valid
-    // NSString, so the call is well-formed.
-    let predicate =
-        unsafe { NSPredicate::predicateWithFormat_argumentArray(&format_str, Some(&args)) };
-    query.setPredicate(Some(&predicate));
-
-    let scope_strings: Vec<objc2::rc::Retained<NSString>> = dirs
-        .iter()
-        .map(|d| NSString::from_str(&d.replace("~", home_dir)))
-        .collect();
-    let scope_objects: Vec<objc2::rc::Retained<objc2::runtime::AnyObject>> = scope_strings
-        .into_iter()
-        .map(|s| objc2::rc::Retained::into_super(objc2::rc::Retained::into_super(s)))
-        .collect();
-    let scopes = NSArray::from_retained_slice(&scope_objects);
-    // SAFETY: setSearchScopes expects an NSArray of scope objects (NSString paths
-    // or NSURL). We pass an array of NSString path values which is a valid scope type.
-    unsafe { query.setSearchScopes(&scopes) };
-}
-
-/// This extracts paths from an NSMetadataQuery and sends them as batched App results
-///
-/// Called on the query thread after the gather-complete notification fires.
-/// Disables updates during iteration to prevent mutation.
-/// Returns the absolute paths of accepted results for subsequent icon loading.
-fn drain_metadata_results(
-    query: &objc2_foundation::NSMetadataQuery,
-    home_dir: &str,
-    msg_tx: &tokio::sync::mpsc::Sender<QueryThreadMsg>,
-) -> Vec<String> {
-    assert!(!home_dir.is_empty(), "Home dir must not be empty.");
-    assert!(!msg_tx.is_closed(), "Message channel must be open.");
-
-    query.disableUpdates();
-    let count = query.resultCount();
-    let limit = count.min(FILE_SEARCH_MAX_RESULTS as usize);
-    let attr_key = unsafe { NSMetadataItemPathKey };
-
+    let mut reader = tokio::io::BufReader::new(stdout);
     let mut batch: Vec<crate::app::apps::App> = Vec::with_capacity(FILE_SEARCH_BATCH_SIZE as usize);
-    let mut paths: Vec<String> = Vec::with_capacity(limit);
-    let mut idx: usize = 0;
+    let mut total_sent: u32 = 0;
 
-    while idx < limit {
-        let path_str = query
-            .resultAtIndex(idx)
-            .downcast::<objc2_foundation::NSMetadataItem>()
-            .ok()
-            .and_then(|item| item.valueForAttribute(attr_key))
-            .and_then(|val| val.downcast::<NSString>().ok())
-            .map(|ns| ns.to_string());
-
-        if let Some(path_str) = path_str {
-            if let Some(app) = crate::commands::path_to_app(&path_str, home_dir) {
-                batch.push(app);
-                paths.push(path_str);
+    loop {
+        let mut line = String::new();
+        let read_result = tokio::select! {
+            result = reader.read_line(&mut line) => result,
+            _ = receiver.changed() => {
+                // New query arrived — caller will handle it.
+                break;
             }
-        }
-        idx += 1;
+        };
 
-        if batch.len() as u32 >= FILE_SEARCH_BATCH_SIZE {
-            if let Err(e) = msg_tx.try_send(QueryThreadMsg::Batch(std::mem::take(&mut batch))) {
-                warn!("Failed to send file search batch: {e}");
+        match read_result {
+            Ok(0) => {
+                // EOF — flush remaining batch.
+                if !batch.is_empty() {
+                    output
+                        .send(Message::FileSearchResult(std::mem::take(&mut batch)))
+                        .await
+                        .ok();
+                }
+                break;
             }
-        }
-    }
-
-    if !batch.is_empty() {
-        if let Err(e) = msg_tx.try_send(QueryThreadMsg::Batch(batch)) {
-            warn!("Failed to send final file search batch: {e}");
-        }
-    }
-    query.enableUpdates();
-    paths
-}
-
-/// This loads file icons for search results and sends them to the UI
-///
-/// Loads icons via NSWorkspace::iconForFile on the query thread (which has
-/// Cocoa runtime). Only loads the first `max_icons` results. Checks for
-/// new queries between batches to allow cancellation.
-fn load_file_search_icons(
-    paths: &[String],
-    msg_tx: &tokio::sync::mpsc::Sender<QueryThreadMsg>,
-    watch_rx: &tokio::sync::watch::Receiver<(String, Vec<String>)>,
-) {
-    let limit = paths.len().min(FILE_SEARCH_MAX_ICONS);
-
-    assert!(
-        FILE_SEARCH_ICON_BATCH_SIZE > 0,
-        "Batch size must be positive."
-    );
-
-    let mut icon_batch: Vec<(usize, iced::widget::image::Handle)> =
-        Vec::with_capacity(FILE_SEARCH_ICON_BATCH_SIZE);
-
-    let mut idx: usize = 0;
-    while idx < limit {
-        // Cancel if a new query has arrived.
-        if watch_rx.has_changed().unwrap_or(false) {
-            return;
-        }
-
-        if let Some(png_data) = icon_of_path_ns(&paths[idx]) {
-            let handle = image::ImageReader::new(std::io::Cursor::new(png_data))
-                .with_guessed_format()
-                .ok()
-                .and_then(|r| r.decode().ok())
-                .map(|img| {
-                    let rgba = img.to_rgba8();
-                    iced::widget::image::Handle::from_rgba(
-                        rgba.width(),
-                        rgba.height(),
-                        rgba.into_raw(),
-                    )
-                });
-            if let Some(h) = handle {
-                icon_batch.push((idx, h));
-            }
-        }
-        idx += 1;
-
-        if icon_batch.len() >= FILE_SEARCH_ICON_BATCH_SIZE || idx >= limit {
-            if !icon_batch.is_empty() {
-                if let Err(e) =
-                    msg_tx.try_send(QueryThreadMsg::Icons(std::mem::take(&mut icon_batch)))
-                {
-                    warn!("Failed to send icon batch: {e}");
+            Ok(_) => {
+                if let Some(app) = crate::commands::path_to_app(line.trim(), home_dir) {
+                    batch.push(app);
+                    total_sent += 1;
+                }
+                if batch.len() as u32 >= FILE_SEARCH_BATCH_SIZE {
+                    output
+                        .send(Message::FileSearchResult(std::mem::take(&mut batch)))
+                        .await
+                        .ok();
+                }
+                if total_sent >= FILE_SEARCH_MAX_RESULTS {
+                    if !batch.is_empty() {
+                        output
+                            .send(Message::FileSearchResult(std::mem::take(&mut batch)))
+                            .await
+                            .ok();
+                    }
+                    break;
                 }
             }
+            Err(_) => break,
         }
     }
 }
@@ -633,61 +475,21 @@ fn count_dirs_in_dir(dir: impl AsRef<std::path::Path>) -> usize {
         .count()
 }
 
-/// This creates an NSMetadataQuery and registers a gather-complete notification observer
+/// Async subscription that spawns `mdfind` for file search queries.
 ///
-/// Returns the query, the results-ready flag, and the observer handle.
-/// The observer sets the AtomicBool flag when NSMetadataQueryDidFinishGathering fires.
-fn metadata_query_thread_setup() -> (
-    objc2::rc::Retained<objc2_foundation::NSMetadataQuery>,
-    std::sync::Arc<std::sync::atomic::AtomicBool>,
-    objc2::rc::Retained<objc2::runtime::ProtocolObject<dyn objc2::runtime::NSObjectProtocol>>,
-) {
-    let query = NSMetadataQuery::new();
-    query.setNotificationBatchingInterval(0.0);
+/// Uses a `watch` channel so the Tile can push new (query, dirs) pairs.
+/// Each query change cancels any running `mdfind` and starts a fresh one.
+fn handle_file_search() -> impl futures::Stream<Item = Message> {
+    stream::channel(100, async |mut output| {
+        let (sender, mut receiver) =
+            tokio::sync::watch::channel((String::new(), Vec::<String>::new()));
+        output
+            .send(Message::SetFileSearchSender(sender))
+            .await
+            .expect("Failed to send file search sender.");
 
-    let results_ready = Arc::new(AtomicBool::new(false));
-    let flag = results_ready.clone();
-    let block = RcBlock::new(
-        move |_: core::ptr::NonNull<objc2_foundation::NSNotification>| {
-            flag.store(true, Ordering::Release);
-        },
-    );
-
-    let center = NSNotificationCenter::defaultCenter();
-    // SAFETY: addObserverForName registers a notification block with the default center.
-    // The block and notification name are valid for the lifetime of the returned observer.
-    let observer = unsafe {
-        center.addObserverForName_object_queue_usingBlock(
-            Some(NSMetadataQueryDidFinishGatheringNotification),
-            None,
-            None,
-            &block,
-        )
-    };
-
-    assert!(
-        !results_ready.load(Ordering::Acquire),
-        "Flag must start false."
-    );
-    assert!(query.resultCount() == 0, "Query must start empty.");
-
-    (query, results_ready, observer)
-}
-
-/// This is the dedicated thread that runs NSMetadataQuery with an NSRunLoop
-///
-/// Polls the watch channel for new queries every 50ms run-loop tick.
-/// When the gather-complete notification fires (via AtomicBool flag),
-/// drains results and sends them back through the mpsc channel.
-fn metadata_query_thread(
-    mut watch_rx: tokio::sync::watch::Receiver<(String, Vec<String>)>,
-    msg_tx: tokio::sync::mpsc::Sender<QueryThreadMsg>,
-) {
-    let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
-    assert!(!home_dir.is_empty(), "HOME must not be empty.");
-    assert!(!msg_tx.is_closed(), "Message channel must be open.");
-
-    let (query, results_ready, observer) = metadata_query_thread_setup();
+        let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
+        assert!(!home_dir.is_empty(), "HOME must not be empty.");
 
     let run_loop = NSRunLoop::currentRunLoop();
     let run_loop_mode = unsafe { NSDefaultRunLoopMode };
@@ -705,33 +507,33 @@ fn metadata_query_thread(
                 let paths = drain_metadata_results(&query, &home_dir, &msg_tx);
                 load_file_search_icons(&paths, &msg_tx, &watch_rx);
             }
-        }
+            receiver.borrow_and_update();
 
-        // Check for new query from the UI.
-        if watch_rx.has_changed().unwrap_or(false) {
-            let (ref q, ref dirs) = *watch_rx.borrow_and_update();
-
-            // Clear the flag before stopping so a final gather-complete
-            // notification from the old query does not leak through.
-            results_ready.store(false, Ordering::Release);
-            query.stopQuery();
-
-            // Tell the UI to discard previous results before new ones arrive.
-            if let Err(e) = msg_tx.try_send(QueryThreadMsg::Clear) {
-                warn!("Failed to send file search clear: {e}");
+            // Kill previous mdfind if still running.
+            if let Some(ref mut proc) = child {
+                proc.kill().await.ok();
+                proc.wait().await.ok();
             }
+            child = None;
 
-            if q.len() < 2 {
+            let (query, dirs) = receiver.borrow().clone();
+            assert!(query.len() < 1024, "Query too long.");
+
+            if query.len() < 2 {
+                output.send(Message::FileSearchClear).await.ok();
                 continue;
             }
-            assert!(q.len() < 1024, "Query too long.");
 
-            configure_metadata_query(&query, q, dirs, &home_dir);
-            let started = query.startQuery();
-            if !started {
-                warn!("NSMetadataQuery failed to start.");
+            // The query is passed as a -name argument to mdfind. mdfind interprets
+            // this as a substring match on filenames — not as a glob or shell expression.
+            // Passed via args (not shell), so no shell injection risk.
+            // When dirs is empty, omit -onlyin so mdfind searches system-wide.
+            let mut args: Vec<String> = vec!["-name".to_string(), query.clone()];
+            for dir in &dirs {
+                let expanded = dir.replace("~", &home_dir);
+                args.push("-onlyin".to_string());
+                args.push(expanded);
             }
-        }
 
         if msg_tx.is_closed() {
             break;
@@ -744,11 +546,9 @@ fn metadata_query_thread(
         }
     }
 
-    query.stopQuery();
-    let center = NSNotificationCenter::defaultCenter();
-    let observer_ref: &objc2::runtime::AnyObject =
-        objc2::runtime::ProtocolObject::as_ref(&*observer);
-    unsafe { center.removeObserver(observer_ref) };
+            read_mdfind_results(stdout, &home_dir, &mut receiver, &mut output).await;
+        }
+    })
 }
 
 /// Handles the rx / receiver for sending and receiving messages
