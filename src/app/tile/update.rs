@@ -762,6 +762,12 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
         return zero_item_resize_task(id);
     };
 
+    let quittables = if tile.query_lc.starts_with("quit") {
+        get_open_apps(tile.config.theme.show_icons)
+    } else {
+        vec![]
+    };
+
     match tile.query_lc.as_str() {
         "randomvar" => {
             let rand_num = rand::random_range(0..100);
@@ -840,8 +846,14 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
 
     tile.handle_search_query_changed();
     if tile.query_lc.starts_with("quit") {
-        tile.results
-            .extend(get_open_apps(tile.config.theme.show_icons));
+        let query = tile.query_lc.clone();
+        tile.results.extend(quittables.iter().filter_map(move |x| {
+            if x.search_name.starts_with(&query) {
+                Some(x.to_owned())
+            } else {
+                None
+            }
+        }))
     }
 
     if !tile.results.is_empty() {

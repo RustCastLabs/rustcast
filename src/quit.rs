@@ -45,7 +45,7 @@ pub fn get_open_apps(store_icons: bool) -> Vec<App> {
                 open_command: AppCommand::Function(Function::QuitApp(name.clone())),
                 display_name: format!("Quit {}", name),
                 icons,
-                search_name: "Quit".to_string(),
+                search_name: format!("quit {}", name.to_lowercase()),
                 desc: name.to_string(),
             })
         })
