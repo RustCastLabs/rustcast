@@ -83,6 +83,7 @@ pub enum Message {
     UpdateAvailable,
     ResizeWindow(Id, f32),
     OpenWindow,
+    OpenResult(u32),
     OpenToSettings,
     SearchQueryChanged(String, Id),
     KeyPressed(u32),

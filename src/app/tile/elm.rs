@@ -136,8 +136,12 @@ pub fn view(tile: &Tile, wid: window::Id) -> Element<'_, Message> {
             Page::Settings => settings_page(tile.config.clone()),
             Page::FileSearch | Page::Main => container(Column::from_iter(
                 tile.results.iter().enumerate().map(|(i, app)| {
-                    app.clone()
-                        .render(tile.config.theme.clone(), i as u32, tile.focus_id)
+                    app.clone().render(
+                        tile.config.theme.clone(),
+                        i as u32,
+                        tile.focus_id,
+                        Some(Message::OpenResult(i as u32)),
+                    )
                 }),
             ))
             .into(),
@@ -164,7 +168,11 @@ pub fn view(tile: &Tile, wid: window::Id) -> Element<'_, Message> {
             .height(height as u32);
 
         let text = if tile.query_lc.is_empty() {
-            tile.page.to_string()
+            if tile.page == Page::Main {
+                "Frequently used".to_string()
+            } else {
+                tile.page.to_string()
+            }
         } else {
             match results_count {
                 1 => "1 result found".to_string(),

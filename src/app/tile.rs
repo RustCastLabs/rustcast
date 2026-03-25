@@ -27,6 +27,7 @@ use log::{info, warn};
 use objc2::rc::Retained;
 use objc2_app_kit::NSRunningApplication;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::slice::ParallelSliceMut;
 use tokio::io::AsyncBufReadExt;
 use tray_icon::TrayIcon;
 
@@ -69,6 +70,24 @@ impl AppIndex {
         };
 
         app.ranking += 1;
+    }
+
+    fn top_ranked(&self, limit: usize) -> Vec<App> {
+        let mut ranked: Vec<App> = self
+            .by_name
+            .values()
+            .filter(|app| app.ranking > 0)
+            .cloned()
+            .collect();
+
+        ranked.par_sort_by(|left, right| {
+            right
+                .ranking
+                .cmp(&left.ranking)
+                .then_with(|| left.display_name.cmp(&right.display_name))
+        });
+        ranked.truncate(limit);
+        ranked
     }
 
     fn empty() -> AppIndex {
@@ -259,6 +278,10 @@ impl Tile {
             .collect();
 
         self.results = results;
+    }
+
+    pub fn frequent_results(&self) -> Vec<App> {
+        self.options.top_ranked(5)
     }
 
     /// Gets the frontmost application to focus later.

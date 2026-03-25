@@ -173,6 +173,7 @@ impl App {
         theme: crate::config::Theme,
         id_num: u32,
         focussed_id: u32,
+        on_press: Option<Message>,
     ) -> iced::Element<'static, Message> {
         let focused = focussed_id == id_num;
 
@@ -210,11 +211,11 @@ impl App {
         }
         row = row.push(container(text_block).width(Fill));
 
-        let msg = match self.open_command.clone() {
+        let msg = on_press.or(match self.open_command.clone() {
             AppCommand::Function(func) => Some(Message::RunFunction(func)),
             AppCommand::Message(msg) => Some(msg),
             AppCommand::Display => None,
-        };
+        });
 
         let theme_clone = theme.clone();
 
