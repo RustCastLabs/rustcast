@@ -6,15 +6,15 @@ use global_hotkey::hotkey::{Code, HotKey, Modifiers};
 use image::{DynamicImage, ImageReader};
 use log::info;
 use tray_icon::{
-    menu::{
-        accelerator::Accelerator, AboutMetadataBuilder, Icon as Ico, IsMenuItem, Menu, MenuEvent,
-        MenuItem, PredefinedMenuItem, Submenu,
-    },
     Icon, TrayIcon, TrayIconBuilder,
+    menu::{
+        AboutMetadataBuilder, Icon as Ico, IsMenuItem, Menu, MenuEvent, MenuItem,
+        PredefinedMenuItem, Submenu, accelerator::Accelerator,
+    },
 };
 
 use crate::{
-    app::{tile::ExtSender, Message},
+    app::{Message, tile::ExtSender},
     config::Config,
     utils::open_url,
 };
