@@ -21,11 +21,17 @@ pub const WINDOW_WIDTH: f32 = 500.;
 /// The default window height
 pub const DEFAULT_WINDOW_HEIGHT: f32 = 100.;
 
-/// Maximum file search results returned by a single mdfind invocation.
+/// Maximum file search results returned by a single query.
 pub const FILE_SEARCH_MAX_RESULTS: u32 = 400;
 
 /// Number of results to accumulate before flushing a batch to the UI.
 pub const FILE_SEARCH_BATCH_SIZE: u32 = 10;
+
+/// Maximum number of file search results that get icons loaded.
+pub const FILE_SEARCH_MAX_ICONS: usize = 20;
+
+/// Number of icons to accumulate before flushing a batch to the UI.
+pub const FILE_SEARCH_ICON_BATCH_SIZE: usize = 5;
 
 /// The rustcast descriptor name to be put for all rustcast commands
 pub const RUSTCAST_DESC_NAME: &str = "Utility";
@@ -111,6 +117,7 @@ pub enum Message {
     ChangeFocus(ArrowKey, u32),
     FileSearchResult(Vec<App>),
     FileSearchClear,
+    FileSearchIcons(Vec<(usize, iced::widget::image::Handle)>),
     SetFileSearchSender(tokio::sync::watch::Sender<(String, Vec<String>)>),
     DebouncedSearch(Id),
 }
