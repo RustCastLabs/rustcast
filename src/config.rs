@@ -66,6 +66,16 @@ pub enum MainPage {
     Blank,
 }
 
+impl std::fmt::Display for MainPage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            MainPage::Blank => "♥️ Rustcast",
+            MainPage::Favourites => "Favourites",
+            MainPage::FrequentlyUsed => "Frequently Used",
+        })
+    }
+}
+
 /// The settings you can set for the theme
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 #[serde(default)]

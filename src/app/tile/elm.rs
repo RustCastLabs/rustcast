@@ -189,10 +189,9 @@ pub fn view(tile: &Tile, wid: window::Id) -> Element<'_, Message> {
             .height(height as u32);
 
         let text = if tile.query_lc.is_empty() {
-            if tile.config.auto_suggest && tile.page == Page::Main {
-                "Frequently used".to_string()
-            } else {
-                tile.page.to_string()
+            match &tile.page {
+                Page::Main => tile.config.main_page.to_string(),
+                page => page.to_string(),
             }
         } else {
             match results_count {
