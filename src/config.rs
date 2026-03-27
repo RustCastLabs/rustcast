@@ -189,10 +189,11 @@ impl Default for Buffer {
 /// Alias is the text that is used to call this command / search for it
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Shelly {
-    command: String,
-    icon_path: Option<String>,
-    alias: String,
-    alias_lc: String,
+    pub command: String,
+    pub icon_path: Option<String>,
+    pub alias: String,
+    pub alias_lc: String,
+    pub hotkey: Option<String>,
 }
 
 impl ToApp for Shelly {
