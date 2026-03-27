@@ -284,6 +284,10 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
         }
 
         Message::KeyPressed(hk_id) => {
+            if let Some(cmd) = tile.hotkeys.shells.get(&hk_id) {
+                return Task::done(Message::RunFunction(Function::RunShellCommand(cmd.clone())));
+            }
+
             let is_clipboard_hotkey = tile.hotkeys.clipboard_hotkey.id == hk_id;
             let is_open_hotkey = hk_id == tile.hotkeys.toggle.id;
 

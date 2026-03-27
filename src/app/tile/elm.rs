@@ -60,12 +60,22 @@ pub fn new(hotkey: HotKey, config: &Config) -> (Tile, Task<Message>) {
     options.par_sort_by_key(|x| x.display_name.len());
     let options = AppIndex::from_apps(options);
 
+    let mut shells_map = HashMap::new();
+    for shell in &config.shells {
+        if let Some(hk_str) = &shell.hotkey
+            && let Ok(hk) = hk_str.parse::<HotKey>()
+        {
+            shells_map.insert(hk.id, shell.command.clone());
+        }
+    }
+
     let hotkeys = Hotkeys {
         toggle: hotkey,
         clipboard_hotkey: config
             .clipboard_hotkey
             .parse()
             .unwrap_or("SUPER+SHIFT+C".parse().unwrap()),
+        shells: shells_map,
     };
 
     let home = std::env::var("HOME").unwrap_or("/".to_string());

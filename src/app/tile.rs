@@ -179,6 +179,7 @@ pub struct Tile {
 pub struct Hotkeys {
     pub toggle: HotKey,
     pub clipboard_hotkey: HotKey,
+    pub shells: HashMap<u32, String>,
 }
 
 impl Tile {

@@ -76,11 +76,18 @@ fn main() -> iced::Result {
         .parse()
         .unwrap_or("SUPER+SHIFT+C".parse().unwrap());
 
-    let hotkeys = vec![show_hide, cbhist];
+    let mut hotkeys = vec![show_hide, cbhist];
+    for shell in &config.shells {
+        if let Some(hk_str) = &shell.hotkey
+            && let Ok(hk) = hk_str.parse::<HotKey>()
+        {
+            hotkeys.push(hk);
+        }
+    }
 
     manager
         .register_all(&hotkeys)
-        .expect("Unable to register hotkey");
+        .expect("Unable to register hotkeys");
 
     info!("Hotkeys loaded");
     info!("Starting rustcast");
