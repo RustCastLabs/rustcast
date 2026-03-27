@@ -3829,7 +3829,6 @@ dependencies = [
 name = "rustcast"
 version = "0.7.2"
 dependencies = [
- "anyhow",
  "arboard",
  "block2 0.6.2",
  "emojis",
