@@ -10,6 +10,7 @@ use iced::widget::text_input;
 use crate::app::Editable;
 use crate::app::SetConfigBufferFields;
 use crate::app::SetConfigThemeFields;
+use crate::commands::Function;
 use crate::styles::delete_button_style;
 use crate::styles::settings_add_button_style;
 use crate::styles::settings_checkbox_style;
@@ -204,16 +205,19 @@ pub fn settings_page(config: Config) -> Element<'static, Message> {
     let theme_clone = theme.clone();
     let font_family = settings_item_column([
         settings_hint_text(theme.clone(), "Set Font family"),
-        text_input("Font family", &config.theme.font.unwrap_or("".to_string()))
-            .on_input(move |input: String| {
-                Message::SetConfig(SetConfigFields::SetThemeFields(SetConfigThemeFields::Font(
-                    input,
-                )))
-            })
-            .on_submit(Message::WriteConfig(false))
-            .width(Length::Fill)
-            .style(move |_, _| settings_text_input_item_style(&theme_clone))
-            .into(),
+        text_input(
+            "Font family",
+            &config.theme.font.clone().unwrap_or("".to_string()),
+        )
+        .on_input(move |input: String| {
+            Message::SetConfig(SetConfigFields::SetThemeFields(SetConfigThemeFields::Font(
+                input,
+            )))
+        })
+        .on_submit(Message::WriteConfig(false))
+        .width(Length::Fill)
+        .style(move |_, _| settings_text_input_item_style(&theme_clone))
+        .into(),
         notice_item(theme.clone(), "What font rustcast should use"),
     ]);
 
@@ -372,12 +376,13 @@ pub fn settings_page(config: Config) -> Element<'static, Message> {
         text_clr.into(),
         bg_clr.into(),
         settings_hint_text(theme.clone(), "Aliases"),
-        aliases_item(config.aliases, &theme),
+        aliases_item(config.aliases.clone(), &theme),
         settings_hint_text(theme.clone(), "Modes"),
-        modes_item(config.modes, &theme),
+        modes_item(config.modes.clone(), &theme),
         Row::from_iter([
             savebutton(theme.clone()),
             default_button(theme.clone()),
+            copy_config_button(config),
             wiki_button(theme.clone()),
         ])
         .spacing(5)
@@ -423,18 +428,34 @@ fn default_button(theme: Theme) -> Element<'static, Message> {
 
 fn wiki_button(theme: Theme) -> Element<'static, Message> {
     Button::new(
-        Text::new("Open the wiki")
+        Text::new("Open file")
             .align_x(Alignment::Center)
             .width(Length::Fill)
             .font(theme.font()),
     )
     .style(move |_, _| settings_save_button_style(&theme))
     .width(Length::Fill)
-    .on_press(Message::RunFunction(
-        crate::commands::Function::OpenWebsite(
-            "https://github.com/RustCastLabs/rustcast/wiki".to_string(),
+    .on_press(Message::RunFunction(crate::commands::Function::OpenApp(
+        std::env::var("HOME").unwrap_or("".to_string()) + "/.config/rustcast/config.toml",
+    )))
+    .into()
+}
+
+fn copy_config_button(config: Box<Config>) -> Element<'static, Message> {
+    let theme = config.theme.clone();
+    Button::new(
+        Text::new("Copy config")
+            .align_x(Alignment::Center)
+            .width(Length::Fill)
+            .font(theme.font()),
+    )
+    .style(move |_, _| settings_save_button_style(&theme))
+    .width(Length::Fill)
+    .on_press(Message::RunFunction(Function::CopyToClipboard(
+        crate::clipboard::ClipBoardContentType::Text(
+            toml::to_string(&config).unwrap_or("".to_string()),
         ),
-    ))
+    )))
     .into()
 }
 

@@ -363,6 +363,10 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
 
         Message::RunFunction(command) => {
             command.execute(&tile.config);
+            let page_task = match tile.page {
+                Page::Settings => Task::done(Message::SwitchToPage(Page::Main)),
+                _ => Task::none(),
+            };
 
             let return_focus_task = match &command {
                 Function::OpenApp(_) | Function::GoogleSearch(_) => Task::none(),
@@ -376,6 +380,7 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             window::latest()
                 .map(|x| x.unwrap())
                 .map(Message::HideWindow)
+                .chain(page_task)
                 .chain(Task::done(Message::ClearSearchQuery))
                 .chain(return_focus_task)
         }
