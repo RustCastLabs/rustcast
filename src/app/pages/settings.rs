@@ -679,7 +679,9 @@ fn dir_picker_button(directory: String, dir: &str, theme: Theme) -> Button<'stat
     let home = std::env::var("HOME").unwrap_or("/".to_string());
     Button::new(Text::new(dir.to_owned().replace(&home, "~")))
         .on_press_with(move || {
-            let msg = rfd::FileDialog::new()
+            
+
+            rfd::FileDialog::new()
                 .set_directory(home.clone())
                 .set_can_create_directories(false)
                 .pick_folder()
@@ -695,9 +697,7 @@ fn dir_picker_button(directory: String, dir: &str, theme: Theme) -> Button<'stat
                         old: directory.clone(),
                         new: directory.clone(),
                     },
-                )));
-
-            msg
+                )))
         })
         .style(move |_, _| settings_add_button_style(&theme.clone()))
 }
@@ -705,7 +705,9 @@ fn dir_picker_button(directory: String, dir: &str, theme: Theme) -> Button<'stat
 fn dir_adder_button(dir: &str, theme: Theme) -> Button<'static, Message> {
     Button::new(Text::new(dir.to_owned()))
         .on_press_with(move || {
-            let msg = rfd::FileDialog::new()
+            
+
+            rfd::FileDialog::new()
                 .set_directory(std::env::var("HOME").unwrap_or("/".to_string()))
                 .set_can_create_directories(false)
                 .pick_folder()
@@ -715,9 +717,7 @@ fn dir_adder_button(dir: &str, theme: Theme) -> Button<'static, Message> {
                 })
                 .unwrap_or(Message::SetConfig(SetConfigFields::SearchDirs(
                     Editable::Create(String::new()),
-                )));
-
-            msg
+                )))
         })
         .style(move |_, _| settings_add_button_style(&theme.clone()))
 }
