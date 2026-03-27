@@ -63,7 +63,6 @@ pub fn menu_builder(config: Config, sender: ExtSender, update_item: bool) -> Men
         &about_item(get_image()),
         &open_github_item(),
         &PredefinedMenuItem::separator(),
-        &auto_start_item(config.start_at_login),
         &refresh_item(),
         &open_item(hotkey),
         &mode_item(modes),
@@ -114,22 +113,6 @@ fn init_event_handler(sender: ExtSender, hotkey_id: Option<u32>) {
                     });
                 }
             }
-            "auto_start_true" => {
-                runtime.spawn(async move {
-                    sender
-                        .clone()
-                        .try_send(Message::ToggleAutoStartup(true))
-                        .unwrap();
-                });
-            }
-            "auto_start_false" => {
-                runtime.spawn(async move {
-                    sender
-                        .clone()
-                        .try_send(Message::ToggleAutoStartup(false))
-                        .unwrap();
-                });
-            }
             "update" => {
                 open_url("https://github.com/RustCastLabs/rustcast/releases/latest");
             }
@@ -171,20 +154,6 @@ fn version_item() -> MenuItem {
 
 fn discord_item() -> MenuItem {
     MenuItem::with_id("open_discord", "RustCast discord", true, None)
-}
-
-fn auto_start_item(enabled: bool) -> MenuItem {
-    let id = match enabled {
-        true => "auto_start_true",
-        false => "auto_start_false",
-    };
-
-    let msg = match enabled {
-        true => "Don't open on login",
-        false => "Open on login",
-    };
-
-    MenuItem::with_id(id, msg, true, None)
 }
 
 fn hide_tray_icon() -> MenuItem {

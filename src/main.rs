@@ -17,6 +17,7 @@ use std::{fs::OpenOptions, path::Path};
 use crate::{
     app::tile::{self, Tile},
     config::Config,
+    platform::macos::get_autostart_status,
 };
 
 use global_hotkey::{
@@ -43,10 +44,12 @@ fn main() -> iced::Result {
         .unwrap();
     }
 
-    let config: Config = match std::fs::read_to_string(&file_path) {
+    let mut config: Config = match std::fs::read_to_string(&file_path) {
         Ok(a) => toml::from_str(&a).unwrap_or(Config::default()),
         Err(_) => Config::default(),
     };
+
+    config.start_at_login = get_autostart_status();
 
     if cfg!(debug_assertions) {
         let sub = tracing_subscriber::fmt().finish();

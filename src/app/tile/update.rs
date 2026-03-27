@@ -105,7 +105,7 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                 stop_at_login();
                 tile.config.start_at_login = false
             }
-            Task::done(Message::ReloadConfig)
+            Task::none()
         }
 
         Message::EscKeyPressed(id) => {

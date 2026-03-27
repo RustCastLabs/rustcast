@@ -23,6 +23,15 @@ pub fn stop_at_login() {
     }
 }
 
+pub fn get_autostart_status() -> bool {
+    unsafe {
+        SMAppService::mainAppService()
+            .registerAndReturnError()
+            .ok()
+            .is_some()
+    }
+}
+
 /// This sets the activation policy of the app to Accessory, allowing rustcast to be visible ontop
 /// of fullscreen apps
 pub(super) fn set_activation_policy_accessory() {
