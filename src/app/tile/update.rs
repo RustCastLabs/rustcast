@@ -943,6 +943,10 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
                 return Task::batch([zero_item_resize_task(id), task]);
             }
         }
+        "fav" => {
+            tile.results = tile.options.get_favourites();
+            return resize_for_results_count(id, tile.results.len());
+        }
         query => 'a: {
             if !query.starts_with(">") || tile.page != Page::Main {
                 break 'a;
