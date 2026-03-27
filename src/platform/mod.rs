@@ -56,3 +56,21 @@ pub fn get_installed_apps(store_icons: bool) -> Vec<App> {
 pub fn get_installed_apps(store_icons: bool) -> Vec<App> {
     self::cross::get_installed_apps(store_icons)
 }
+
+#[cfg(target_os = "macos")]
+pub fn get_copied_files() -> Option<Vec<String>> {
+    self::macos::get_copied_files()
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn get_copied_files() -> Option<Vec<String>> {
+    None
+}
+
+#[cfg(target_os = "macos")]
+pub fn put_copied_files(paths: &[String]) {
+    self::macos::put_copied_files(paths);
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn put_copied_files(_: &[String]) {}

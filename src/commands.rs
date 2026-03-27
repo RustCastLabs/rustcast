@@ -105,6 +105,9 @@ impl Function {
                 ClipBoardContentType::Image(img) => {
                     Clipboard::new().unwrap().set_image(img.to_owned_img()).ok();
                 }
+                ClipBoardContentType::Files(files, _) => {
+                    crate::platform::put_copied_files(files);
+                }
             },
 
             Function::Quit => std::process::exit(0),

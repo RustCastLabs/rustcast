@@ -127,6 +127,83 @@ fn viewport_content(content: &ClipBoardContentType, theme: &Theme) -> Element<'s
             .width(Length::Fill)
             .into()
         }
+        ClipBoardContentType::Files(files, img_opt) => {
+            let is_single_image = files.len() == 1 && {
+                let p = std::path::Path::new(&files[0]);
+                if let Some(ext) = p.extension().and_then(|s| s.to_str()) {
+                    matches!(
+                        ext.to_lowercase().as_str(),
+                        "png" | "jpg" | "jpeg" | "gif" | "bmp" | "webp" | "ico" | "tiff"
+                    )
+                } else {
+                    false
+                }
+            };
+
+            if is_single_image {
+                container(
+                    Viewer::new(Handle::from_path(&files[0]))
+                        .content_fit(ContentFit::ScaleDown)
+                        .scale_step(0.)
+                        .max_scale(1.)
+                        .min_scale(1.),
+                )
+                .padding(10)
+                .style(|_| container::Style {
+                    border: iced::Border {
+                        color: iced::Color::WHITE,
+                        width: 1.,
+                        radius: Radius::new(0.),
+                    },
+                    ..Default::default()
+                })
+                .width(Length::Fill)
+                .into()
+            } else if let Some(data) = img_opt {
+                let bytes = data.to_owned_img().into_owned_bytes();
+                container(
+                    Viewer::new(
+                        Handle::from_rgba(data.width as u32, data.height as u32, bytes.to_vec())
+                            .clone(),
+                    )
+                    .content_fit(ContentFit::ScaleDown)
+                    .scale_step(0.)
+                    .max_scale(1.)
+                    .min_scale(1.),
+                )
+                .padding(10)
+                .style(|_| container::Style {
+                    border: iced::Border {
+                        color: iced::Color::WHITE,
+                        width: 1.,
+                        radius: Radius::new(0.),
+                    },
+                    ..Default::default()
+                })
+                .width(Length::Fill)
+                .into()
+            } else {
+                Scrollable::with_direction(
+                        container(
+                            Text::new(files.join("\n"))
+                                .height(Length::Fill)
+                                .width(Length::Fill)
+                                .align_x(Alignment::Start)
+                                .font(theme.font())
+                                .size(16),
+                        )
+                        .width(Length::Fill)
+                        .height(Length::Fill),
+                        Direction::Both {
+                            vertical: Scrollbar::hidden(),
+                            horizontal: Scrollbar::hidden(),
+                        },
+                    )
+                    .height(Length::Fill)
+                    .width(Length::Fill)
+                    .into()
+            }
+        }
     };
 
     let theme_clone = theme.clone();

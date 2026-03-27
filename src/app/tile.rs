@@ -34,6 +34,7 @@ use tray_icon::TrayIcon;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// This is a wrapper around the sender to disable dropping
@@ -169,6 +170,7 @@ pub struct Tile {
     page: Page,
     pub height: f32,
     pub file_search_sender: Option<tokio::sync::watch::Sender<(String, Vec<String>)>>,
+    pub db: Arc<crate::database::Database>,
     debouncer: Debouncer,
 }
 
@@ -347,8 +349,13 @@ fn handle_clipboard_history() -> impl futures::Stream<Item = Message> {
         let mut prev_byte_rep: Option<ClipBoardContentType> = None;
 
         loop {
-            let byte_rep = if let Ok(a) = clipboard.get_image() {
-                Some(ClipBoardContentType::Image(a))
+            let files_opt = crate::platform::get_copied_files();
+            let img_opt = clipboard.get_image().ok();
+
+            let byte_rep = if let Some(files) = files_opt {
+                Some(ClipBoardContentType::Files(files, img_opt))
+            } else if let Some(img) = img_opt {
+                Some(ClipBoardContentType::Image(img))
             } else if let Ok(a) = clipboard.get_text()
                 && !a.trim().is_empty()
             {

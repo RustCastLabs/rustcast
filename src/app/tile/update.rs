@@ -11,7 +11,7 @@ use iced::widget::operation::AbsoluteOffset;
 use iced::window;
 use iced::window::Id;
 use log::info;
-use rayon::iter::IntoParallelRefIterator;
+use crate::clipboard::ClipBoardContentType;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSliceMut;
 
@@ -238,10 +238,9 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
 
         Message::SaveRanking => {
             tile.ranking = tile.options.get_rankings();
-            let string_rep = toml::to_string(&tile.ranking).unwrap_or("".to_string());
-            let ranking_file_path =
-                std::env::var("HOME").unwrap_or("/".to_string()) + "/.config/rustcast/ranking.toml";
-            fs::write(ranking_file_path, string_rep).ok();
+            for (name, rank) in &tile.ranking {
+                let _ = tile.db.save_ranking(name, *rank);
+            }
             Task::none()
         }
 
@@ -451,16 +450,31 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
         Message::EditClipboardHistory(action) => {
             match action {
                 Editable::Create(content) => {
-                    if !tile.clipboard_content.contains(&content) {
-                        tile.clipboard_content.insert(0, content);
+                    let old_item = tile.clipboard_content.iter().find(|x| {
+                        if let (ClipBoardContentType::Files(f1, _), ClipBoardContentType::Files(f2, _)) = (x, &content) {
+                            f1 == f2
+                        } else {
+                            *x == &content
+                        }
+                    }).cloned();
+
+                    if old_item.is_none() {
+                        tile.clipboard_content.insert(0, content.clone());
+                        let _ = tile.db.save_clipboard_item(&content);
                         return Task::none();
                     }
 
                     let new_content_vec = tile
                         .clipboard_content
-                        .par_iter()
+                        .iter()
                         .filter_map(|x| {
-                            if *x == content {
+                            let is_match = if let (ClipBoardContentType::Files(f1, _), ClipBoardContentType::Files(f2, _)) = (x, &content) {
+                                f1 == f2
+                            } else {
+                                x == &content
+                            };
+                            
+                            if is_match {
                                 None
                             } else {
                                 Some(x.to_owned())
@@ -469,7 +483,11 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                         .collect();
 
                     tile.clipboard_content = new_content_vec;
-                    tile.clipboard_content.insert(0, content);
+                    tile.clipboard_content.insert(0, content.clone());
+                    if let Some(old) = old_item {
+                        let _ = tile.db.delete_clipboard_item(&old);
+                    }
+                    let _ = tile.db.save_clipboard_item(&content);
                 }
                 Editable::Delete(content) => {
                     tile.clipboard_content = tile
@@ -483,6 +501,7 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                             }
                         })
                         .collect();
+                    let _ = tile.db.delete_clipboard_item(&content);
                 }
                 Editable::Update { old, new } => {
                     tile.clipboard_content = tile
@@ -490,6 +509,8 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                         .iter()
                         .map(|x| if x == &old { new.clone() } else { x.to_owned() })
                         .collect();
+                    let _ = tile.db.delete_clipboard_item(&old);
+                    let _ = tile.db.save_clipboard_item(&new);
                 }
             }
             Task::none()
@@ -693,6 +714,7 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
 
         Message::ClearClipboardHistory => {
             tile.clipboard_content.clear();
+            let _ = tile.db.clear_clipboard();
             Task::none()
         }
 
