@@ -2,7 +2,6 @@
 //! architecture. If the subscription function becomes too large, it should be moved to this file
 
 use std::collections::HashMap;
-use std::fs;
 
 use global_hotkey::hotkey::HotKey;
 use iced::border::Radius;
@@ -33,6 +32,7 @@ use crate::{
     config::Config,
     platform::transform_process_to_ui_element,
 };
+use std::sync::Arc;
 
 /// Initialise the base window
 pub fn new(hotkey: HotKey, config: &Config) -> (Tile, Task<Message>) {
@@ -78,12 +78,10 @@ pub fn new(hotkey: HotKey, config: &Config) -> (Tile, Task<Message>) {
         shells: shells_map,
     };
 
-    let home = std::env::var("HOME").unwrap_or("/".to_string());
-
-    let ranking = toml::from_str(
-        &fs::read_to_string(home + "/.config/rustcast/ranking.toml").unwrap_or("".to_string()),
-    )
-    .unwrap_or(HashMap::new());
+    let db =
+        Arc::new(crate::database::Database::new().expect("Failed to initialize SQLite database"));
+    let ranking = db.get_rankings().unwrap_or_default();
+    let clipboard_content = db.get_clipboard_history(100).unwrap_or_default();
 
     (
         Tile {
@@ -102,12 +100,13 @@ pub fn new(hotkey: HotKey, config: &Config) -> (Tile, Task<Message>) {
             config: config.clone(),
             ranking,
             theme: config.theme.to_owned().clone().into(),
-            clipboard_content: vec![],
+            clipboard_content,
             tray_icon: None,
             sender: None,
             page: Page::Main,
             height: DEFAULT_WINDOW_HEIGHT,
             file_search_sender: None,
+            db,
             debouncer: Debouncer::new(config.debounce_delay),
         },
         Task::batch([open.map(|_| Message::OpenWindow)]),
