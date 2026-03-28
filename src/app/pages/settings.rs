@@ -84,6 +84,23 @@ pub fn settings_page(config: Config) -> Element<'static, Message> {
     ]);
 
     let theme_clone = theme.clone();
+    let clipboard_history = Row::from_iter([
+        settings_hint_text(theme.clone(), "Enable Clipboard history"),
+        checkbox(config.clone().cbhist)
+            .style(move |_, _| settings_checkbox_style(&theme_clone))
+            .on_toggle(|input| Message::SetConfig(SetConfigFields::ClipboardHistory(input)))
+            .into(),
+        notice_item(
+            theme.clone(),
+            "If you want your clipboard history to be stored",
+        ),
+    ])
+    .align_y(Alignment::Center)
+    .spacing(SETTINGS_ITEM_COL_SPACING * 2)
+    .padding(SETTINGS_ITEM_PADDING)
+    .height(SETTINGS_ITEM_HEIGHT);
+
+    let theme_clone = theme.clone();
     let current_delay = config.debounce_delay;
     let debounce = settings_item_column([
         settings_hint_text(theme.clone(), "Set the debounce time"),
@@ -396,6 +413,7 @@ pub fn settings_page(config: Config) -> Element<'static, Message> {
         debounce.into(),
         haptic.into(),
         tray_icon.into(),
+        clipboard_history.into(),
         auto_suggest.into(),
         show_scrollbar.into(),
         clear_on_hide.into(),

@@ -345,9 +345,20 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
         }
 
         Message::SwitchToPage(page) => {
-            tile.page = page;
-            let task = match tile.page {
-                Page::ClipboardHistory | Page::Settings => window::latest().map(|x| {
+            let task = match &page {
+                Page::ClipboardHistory => {
+                    if !tile.config.cbhist {
+                        return Task::none();
+                    }
+                    window::latest().map(|x| {
+                        let id = x.unwrap();
+                        Message::ResizeWindow(
+                            id,
+                            ((7 * 55) + 35 + DEFAULT_WINDOW_HEIGHT as usize) as f32,
+                        )
+                    })
+                }
+                Page::Settings => window::latest().map(|x| {
                     let id = x.unwrap();
                     Message::ResizeWindow(
                         id,
@@ -356,6 +367,8 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                 }),
                 _ => Task::none(),
             };
+
+            tile.page = page;
 
             let refresh_empty_main_query = if tile.page == Page::Main {
                 window::latest()
@@ -477,6 +490,9 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
         }
 
         Message::EditClipboardHistory(action) => {
+            if !tile.config.cbhist {
+                return Task::none();
+            }
             match action {
                 Editable::Create(content) => {
                     if !tile.clipboard_content.contains(&content) {
@@ -606,6 +622,7 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             match config {
                 SetConfigFields::ToggleHotkey(hk) => final_config.toggle_hotkey = hk,
                 SetConfigFields::ClipboardHotkey(hk) => final_config.clipboard_hotkey = hk,
+                SetConfigFields::ClipboardHistory(cbhist) => final_config.cbhist = cbhist,
                 SetConfigFields::Modes(Editable::Create((key, value))) => {
                     final_config.modes.insert(key, value);
                 }
@@ -935,7 +952,6 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
         }
         "cbhist" => {
             task = task.chain(Task::done(Message::SwitchToPage(Page::ClipboardHistory)));
-            tile.page = Page::ClipboardHistory;
         }
         "main" => {
             if tile.page != Page::Main {

@@ -124,6 +124,7 @@ pub enum SetConfigFields {
     ClipboardHotkey(String),
     PlaceHolder(String),
     SearchUrl(String),
+    ClipboardHistory(bool),
     HapticFeedback(bool),
     ShowMenubarIcon(bool),
     SetPage(MainPage),
