@@ -75,6 +75,21 @@ pub fn result_button_style(theme: &ConfigTheme) -> button::Style {
     }
 }
 
+pub fn favourite_button_style(theme: &ConfigTheme, status: button::Status) -> button::Style {
+    let text_color = match status {
+        button::Status::Pressed => theme.text_color(1.),
+        button::Status::Hovered => theme.text_color(0.5),
+        button::Status::Active => theme.text_color(0.1),
+        button::Status::Disabled => theme.text_color(0.1),
+    };
+
+    button::Style {
+        text_color,
+        background: Some(Background::Color(theme.bg_color())),
+        ..Default::default()
+    }
+}
+
 pub fn results_scrollbar_style(tile: &ConfigTheme) -> scrollable::Style {
     let clr = with_alpha(tile.bg_color(), 0.7);
 

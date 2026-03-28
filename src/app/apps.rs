@@ -6,7 +6,7 @@ use std::io::Cursor;
 
 use iced::{
     Alignment,
-    Length::Fill,
+    Length::{self, Fill},
     widget::{
         Button, Row, Text, container,
         image::{Handle, Viewer},
@@ -18,7 +18,7 @@ use crate::{
     app::{Message, Page, RUSTCAST_DESC_NAME},
     clipboard::ClipBoardContentType,
     commands::Function,
-    styles::{result_button_style, result_row_container_style},
+    styles::{favourite_button_style, result_button_style, result_row_container_style},
     utils::icns_data_to_handle,
 };
 
@@ -214,9 +214,10 @@ impl App {
         let name = self.search_name.clone();
         let theme_clone = theme.clone();
         row = row.push(
-            Button::new("♥️")
+            Button::new(Text::new("♥️").width(Length::Fill).align_x(Alignment::End))
                 .on_press_with(move || Message::ToggleFavouriteApp(name.clone()))
-                .style(move |_, _| result_button_style(&theme_clone)),
+                .width(Length::Fill)
+                .style(move |_, status| favourite_button_style(&theme_clone, status)),
         );
 
         let msg = on_press.or(match self.open_command.clone() {
