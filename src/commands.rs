@@ -2,7 +2,6 @@
 //! copying to clipboard, etc.
 use std::{process::Command, thread};
 
-use arboard::Clipboard;
 use objc2_app_kit::NSWorkspace;
 use objc2_foundation::NSURL;
 
@@ -45,10 +44,7 @@ impl Function {
                 Command::new("sh").arg("-c").arg(command).spawn().ok();
             }
             Function::RandomVar(var) => {
-                Clipboard::new()
-                    .unwrap()
-                    .set_text(var.to_string())
-                    .unwrap_or(());
+                crate::platform::put_copied_text(&var.to_string());
             }
 
             Function::QuitAllApps => {
@@ -92,23 +88,22 @@ impl Function {
             }
 
             Function::Calculate(expr) => {
-                Clipboard::new()
-                    .unwrap()
-                    .set_text(expr.eval().map(|x| x.to_string()).unwrap_or("".to_string()))
-                    .unwrap_or(());
+                crate::platform::put_copied_text(&expr.eval().map(|x| x.to_string()).unwrap_or("".to_string()));
             }
 
-            Function::CopyToClipboard(clipboard_content) => match clipboard_content {
-                ClipBoardContentType::Text(text) => {
-                    Clipboard::new().unwrap().set_text(text).ok();
+            Function::CopyToClipboard(content) => {
+                match content {
+                    ClipBoardContentType::Text(text) => {
+                        crate::platform::put_copied_text(&text);
+                    }
+                    ClipBoardContentType::Image(data) => {
+                        crate::platform::put_copied_image(&data);
+                    }
+                    ClipBoardContentType::Files(paths, _) => {
+                        crate::platform::put_copied_files(&paths);
+                    }
                 }
-                ClipBoardContentType::Image(img) => {
-                    Clipboard::new().unwrap().set_image(img.to_owned_img()).ok();
-                }
-                ClipBoardContentType::Files(files, _) => {
-                    crate::platform::put_copied_files(files);
-                }
-            },
+            }
 
             Function::Quit => std::process::exit(0),
         }

@@ -27,14 +27,14 @@ pub fn rustcast_text_input_style(theme: &ConfigTheme) -> text_input::Style {
     text_input::Style {
         background: Background::Color(surface),
         border: Border {
-            color: glass_border(theme.text_color(1.0), focused),
+            color: glass_border(theme.text_color(0.), focused),
             width: 0.,
-            radius: Radius::new(15.).bottom(0.),
+            radius: Radius::new(10.).bottom(0.),
         },
-        icon: theme.text_color(0.75),
-        placeholder: theme.text_color(0.50),
-        value: theme.text_color(1.0),
-        selection: with_alpha(theme.text_color(1.0), 0.20),
+        icon: theme.text_color(0.),
+        placeholder: theme.text_color(0.2),
+        value: theme.text_color(0.9),
+        selection: theme.text_color(0.2),
     }
 }
 
@@ -44,7 +44,7 @@ pub fn contents_style(theme: &ConfigTheme) -> container::Style {
         background: None,
         text_color: None,
         border: iced::Border {
-            color: theme.text_color(0.7),
+            color: theme.text_color(0.9),
             width: 0.4,
             radius: Radius::new(14.0),
         },
@@ -70,6 +70,21 @@ pub fn delete_button_style(theme: &ConfigTheme) -> button::Style {
 pub fn result_button_style(theme: &ConfigTheme) -> button::Style {
     button::Style {
         text_color: theme.text_color(1.),
+        background: Some(Background::Color(theme.bg_color())),
+        ..Default::default()
+    }
+}
+
+pub fn favourite_button_style(theme: &ConfigTheme, status: button::Status) -> button::Style {
+    let text_color = match status {
+        button::Status::Pressed => theme.text_color(1.),
+        button::Status::Hovered => theme.text_color(0.5),
+        button::Status::Active => theme.text_color(0.1),
+        button::Status::Disabled => theme.text_color(0.1),
+    };
+
+    button::Style {
+        text_color,
         background: Some(Background::Color(theme.bg_color())),
         ..Default::default()
     }
@@ -260,8 +275,8 @@ pub fn settings_slider_style(theme: &ConfigTheme) -> slider::Style {
 
 /// Helper fn for making a color look like its glassy
 pub fn glass_surface(base: Color, focused: bool) -> Color {
-    let t = if focused { 0.3 } else { 0.06 };
-    let a = if focused { 0.3 } else { 0.22 };
+    let t = if focused { 0.2 } else { 0.06 };
+    let a = if focused { 0.9 } else { 0.58 };
     with_alpha(tint(base, t), a)
 }
 
@@ -269,4 +284,15 @@ pub fn glass_surface(base: Color, focused: bool) -> Color {
 pub fn glass_border(base_text: Color, focused: bool) -> Color {
     let a = if focused { 0.35 } else { 0.22 };
     with_alpha(base_text, a)
+}
+
+pub fn clipboard_image_border_style() -> container::Style {
+    container::Style {
+        border: Border {
+            color: Color::WHITE,
+            width: 1.,
+            radius: Radius::new(0.),
+        },
+        ..Default::default()
+    }
 }

@@ -74,3 +74,49 @@ pub fn put_copied_files(paths: &[String]) {
 
 #[cfg(not(target_os = "macos"))]
 pub fn put_copied_files(_: &[String]) {}
+
+#[cfg(target_os = "macos")]
+pub fn icon_of_path_ns(path: &str) -> Option<Vec<u8>> {
+    self::macos::discovery::icon_of_path_ns(path)
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn icon_of_path_ns(_: &str) -> Option<Vec<u8>> {
+    None
+}
+
+#[cfg(target_os = "macos")]
+pub fn get_copied_text() -> Option<String> {
+    self::macos::clipboard::get_copied_text()
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn get_copied_text() -> Option<String> {
+    None
+}
+
+#[cfg(target_os = "macos")]
+pub fn get_copied_image() -> Option<crate::clipboard::ImageData<'static>> {
+    self::macos::clipboard::get_copied_image()
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn get_copied_image() -> Option<crate::clipboard::ImageData<'static>> {
+    None
+}
+
+#[cfg(target_os = "macos")]
+pub fn put_copied_text(text: &str) {
+    self::macos::clipboard::put_copied_text(text);
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn put_copied_text(_: &str) {}
+
+#[cfg(target_os = "macos")]
+pub fn put_copied_image(img: &crate::clipboard::ImageData) {
+    self::macos::clipboard::put_copied_image(img);
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn put_copied_image(_: &crate::clipboard::ImageData) {}

@@ -81,7 +81,7 @@ pub fn new(hotkey: HotKey, config: &Config) -> (Tile, Task<Message>) {
     let db =
         Arc::new(crate::database::Database::new().expect("Failed to initialize SQLite database"));
     let ranking = db.get_rankings().unwrap_or_default();
-    let clipboard_content = db.get_clipboard_history(100).unwrap_or_default();
+    let clipboard_content = vec![];
 
     (
         Tile {
@@ -144,6 +144,8 @@ pub fn view(tile: &Tile, wid: window::Id) -> Element<'_, Message> {
                 tile.clipboard_content.clone(),
                 tile.focus_id,
                 tile.config.theme.clone(),
+                &tile.ranking,
+                &tile.query_lc,
             ),
             Page::EmojiSearch => emoji_page(
                 tile.config.theme.clone(),

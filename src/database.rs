@@ -1,9 +1,9 @@
-use crate::clipboard::ClipBoardContentType;
-use arboard::ImageData;
+use crate::clipboard::{ClipBoardContentType, ImageData};
 use rusqlite::{Connection, Result, params};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Mutex;
+use sha2::{Sha256, Digest};
 
 pub struct Database {
     conn: Mutex<Connection>,
@@ -12,7 +12,9 @@ pub struct Database {
 impl Database {
     pub fn new() -> Result<Self> {
         let home = std::env::var("HOME").unwrap_or("/".to_string());
-        let db_path = format!("{}/.config/rustcast/rustcast.db", home);
+        let db_dir = format!("{}/Library/Application Support/rustcast", home);
+        std::fs::create_dir_all(&db_dir).ok();
+        let db_path = format!("{}/rustcast.db", db_dir);
 
         let conn = Connection::open(&db_path)?;
 
@@ -24,6 +26,25 @@ impl Database {
             [],
         )?;
 
+        let user_version: i32 = conn.query_row("PRAGMA user_version", [], |row| row.get(0)).unwrap_or(0);
+        
+        if user_version < 1 {
+            let table_exists: bool = conn.query_row(
+                "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='clipboard'",
+                [],
+                |row| {
+                    let count: i32 = row.get(0)?;
+                    Ok(count > 0)
+                },
+            ).unwrap_or(false);
+
+            if table_exists {
+                // Ignore failure if column somehow exists
+                let _ = conn.execute("ALTER TABLE clipboard ADD COLUMN image_hash TEXT", []);
+            }
+            conn.execute("PRAGMA user_version = 1", [])?;
+        }
+
         conn.execute(
             "CREATE TABLE IF NOT EXISTS clipboard (
                 id INTEGER PRIMARY KEY,
@@ -32,10 +53,15 @@ impl Database {
                 image_width INTEGER,
                 image_height INTEGER,
                 image_bytes BLOB,
+                image_hash TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )",
             [],
         )?;
+
+        // Ensure indices for speed
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_clipboard_hash ON clipboard(image_hash)", [])?;
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_clipboard_content ON clipboard(content)", [])?;
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -43,7 +69,7 @@ impl Database {
     }
 
     pub fn save_ranking(&self, name: &str, rank: i32) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute(
             "INSERT INTO rankings (name, rank) VALUES (?1, ?2)
              ON CONFLICT(name) DO UPDATE SET rank = excluded.rank",
@@ -53,7 +79,7 @@ impl Database {
     }
 
     pub fn get_rankings(&self) -> Result<HashMap<String, i32>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         let mut stmt = conn.prepare("SELECT name, rank FROM rankings")?;
         let ranking_iter = stmt.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, i32>(1)?))
@@ -67,29 +93,37 @@ impl Database {
     }
 
     pub fn save_clipboard_item(&self, item: &ClipBoardContentType) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         match item {
             ClipBoardContentType::Text(text) => {
                 conn.execute(
-                    "INSERT INTO clipboard (type, content) VALUES ('Text', ?1)",
+                    "INSERT OR REPLACE INTO clipboard (id, type, content) VALUES ((SELECT id FROM clipboard WHERE type = 'Text' AND content = ?1), 'Text', ?1)",
                     params![text],
                 )?;
             }
             ClipBoardContentType::Image(img) => {
+                let mut hasher = Sha256::new();
+                hasher.update(&img.bytes);
+                let hash = hasher.finalize().iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                
                 conn.execute(
-                    "INSERT INTO clipboard (type, image_width, image_height, image_bytes) VALUES ('Image', ?1, ?2, ?3)",
-                    params![img.width as i64, img.height as i64, img.bytes.as_ref()],
+                    "INSERT OR REPLACE INTO clipboard (id, type, image_width, image_height, image_bytes, image_hash) VALUES ((SELECT id FROM clipboard WHERE type = 'Image' AND image_hash = ?4), 'Image', ?1, ?2, ?3, ?4)",
+                    params![img.width as i64, img.height as i64, img.bytes.as_ref(), hash],
                 )?;
             }
             ClipBoardContentType::Files(files, img_opt) => {
                 if let Some(img) = img_opt {
+                    let mut hasher = Sha256::new();
+                    hasher.update(&img.bytes);
+                    let hash = hasher.finalize().iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                    
                     conn.execute(
-                        "INSERT INTO clipboard (type, content, image_width, image_height, image_bytes) VALUES ('Files', ?1, ?2, ?3, ?4)",
-                        params![files.join("\n"), img.width as i64, img.height as i64, img.bytes.as_ref()],
+                        "INSERT OR REPLACE INTO clipboard (id, type, content, image_width, image_height, image_bytes, image_hash) VALUES ((SELECT id FROM clipboard WHERE type = 'Files' AND content = ?1 AND image_hash = ?5), 'Files', ?1, ?2, ?3, ?4, ?5)",
+                        params![files.join("\n"), img.width as i64, img.height as i64, img.bytes.as_ref(), hash],
                     )?;
                 } else {
                     conn.execute(
-                        "INSERT INTO clipboard (type, content) VALUES ('Files', ?1)",
+                        "INSERT OR REPLACE INTO clipboard (id, type, content) VALUES ((SELECT id FROM clipboard WHERE type = 'Files' AND content = ?1 AND image_bytes IS NULL), 'Files', ?1)",
                         params![files.join("\n")],
                     )?;
                 }
@@ -99,7 +133,7 @@ impl Database {
     }
 
     pub fn delete_clipboard_item(&self, item: &ClipBoardContentType) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         match item {
             ClipBoardContentType::Text(text) => {
                 conn.execute(
@@ -108,16 +142,24 @@ impl Database {
                 )?;
             }
             ClipBoardContentType::Image(img) => {
+                let mut hasher = Sha256::new();
+                hasher.update(&img.bytes);
+                let hash = hasher.finalize().iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                
                 conn.execute(
-                    "DELETE FROM clipboard WHERE id = (SELECT id FROM clipboard WHERE type = 'Image' AND image_width = ?1 AND image_height = ?2 AND image_bytes = ?3 ORDER BY created_at DESC LIMIT 1)",
-                    params![img.width as i64, img.height as i64, img.bytes.as_ref()],
+                    "DELETE FROM clipboard WHERE id = (SELECT id FROM clipboard WHERE type = 'Image' AND image_hash = ?1 ORDER BY created_at DESC LIMIT 1)",
+                    params![hash],
                 )?;
             }
             ClipBoardContentType::Files(files, img_opt) => {
                 if let Some(img) = img_opt {
+                    let mut hasher = Sha256::new();
+                    hasher.update(&img.bytes);
+                    let hash = hasher.finalize().iter().map(|b| format!("{:02x}", b)).collect::<String>();
+                    
                     conn.execute(
-                        "DELETE FROM clipboard WHERE id = (SELECT id FROM clipboard WHERE type = 'Files' AND content = ?1 AND image_width = ?2 AND image_height = ?3 AND image_bytes = ?4 ORDER BY created_at DESC LIMIT 1)",
-                        params![files.join("\n"), img.width as i64, img.height as i64, img.bytes.as_ref()],
+                        "DELETE FROM clipboard WHERE id = (SELECT id FROM clipboard WHERE type = 'Files' AND content = ?1 AND image_hash = ?2 ORDER BY created_at DESC LIMIT 1)",
+                        params![files.join("\n"), hash],
                     )?;
                 } else {
                     conn.execute(
@@ -131,13 +173,13 @@ impl Database {
     }
 
     pub fn clear_clipboard(&self) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         conn.execute("DELETE FROM clipboard", [])?;
         Ok(())
     }
 
     pub fn get_clipboard_history(&self, limit: u32) -> Result<Vec<ClipBoardContentType>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().unwrap_or_else(|e| e.into_inner());
         let mut stmt = conn.prepare(
             "SELECT type, content, image_width, image_height, image_bytes FROM clipboard ORDER BY created_at DESC LIMIT ?1"
         )?;
