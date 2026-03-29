@@ -278,11 +278,11 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                 Err(_) => return Task::none(),
             };
 
-            if let Some(hotkey) = Shortcut::parse(&new_config.clipboard_hotkey).ok() {
+            if let Ok(hotkey) = Shortcut::parse(&new_config.clipboard_hotkey) {
                 tile.hotkeys.clipboard_hotkey = hotkey
             }
 
-            if let Some(hotkey) = Shortcut::parse(&new_config.toggle_hotkey).ok() {
+            if let Ok(hotkey) = Shortcut::parse(&new_config.toggle_hotkey) {
                 tile.hotkeys.toggle = hotkey
             }
 

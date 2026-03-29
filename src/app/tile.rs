@@ -239,33 +239,31 @@ impl Tile {
                 if let keyboard::Event::KeyPressed { key, modifiers, .. } = event {
                     match key {
                         keyboard::Key::Named(Named::ArrowUp) => {
-                            return Some(Message::ChangeFocus(ArrowKey::Up, 1));
+                            Some(Message::ChangeFocus(ArrowKey::Up, 1))
                         }
                         keyboard::Key::Named(Named::ArrowLeft) => {
-                            return Some(Message::ChangeFocus(ArrowKey::Left, 1));
+                            Some(Message::ChangeFocus(ArrowKey::Left, 1))
                         }
                         keyboard::Key::Named(Named::ArrowRight) => {
-                            return Some(Message::ChangeFocus(ArrowKey::Right, 1));
+                            Some(Message::ChangeFocus(ArrowKey::Right, 1))
                         }
                         keyboard::Key::Named(Named::ArrowDown) => {
-                            return Some(Message::ChangeFocus(ArrowKey::Down, 1));
+                            Some(Message::ChangeFocus(ArrowKey::Down, 1))
                         }
                         keyboard::Key::Character(chr) => {
                             if modifiers.command() && chr.to_string() == "r" {
-                                return Some(Message::ReloadConfig);
+                                Some(Message::ReloadConfig)
                             } else if chr.to_string() == "p" && modifiers.control() {
-                                return Some(Message::ChangeFocus(ArrowKey::Up, 1));
+                                Some(Message::ChangeFocus(ArrowKey::Up, 1))
                             } else if chr.to_string() == "n" && modifiers.control() {
-                                return Some(Message::ChangeFocus(ArrowKey::Down, 1));
+                                Some(Message::ChangeFocus(ArrowKey::Down, 1))
                             } else {
-                                return Some(Message::FocusTextInput(Move::Forwards(
-                                    chr.to_string(),
-                                )));
+                                Some(Message::FocusTextInput(Move::Forwards(chr.to_string())))
                             }
                         }
-                        keyboard::Key::Named(Named::Enter) => return Some(Message::OpenFocused),
+                        keyboard::Key::Named(Named::Enter) => Some(Message::OpenFocused),
                         keyboard::Key::Named(Named::Backspace) => {
-                            return Some(Message::FocusTextInput(Move::Back));
+                            Some(Message::FocusTextInput(Move::Back))
                         }
                         _ => None,
                     }

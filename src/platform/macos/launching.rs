@@ -27,19 +27,11 @@ pub fn global_handler(sender: ExtSender) {
             let shortcut = match event_type {
                 NSEventType::KeyDown => Shortcut {
                     key_code: Some(key_code),
-                    mods: if mods.0 != 0 {
-                        Some(mods.0 as usize)
-                    } else {
-                        None
-                    },
+                    mods: if mods.0 != 0 { Some(mods.0) } else { None },
                 },
                 NSEventType::FlagsChanged => Shortcut {
                     key_code: None,
-                    mods: if mods.0 != 0 {
-                        Some(mods.0 as usize)
-                    } else {
-                        None
-                    },
+                    mods: if mods.0 != 0 { Some(mods.0) } else { None },
                 },
                 _ => return,
             };
@@ -73,19 +65,11 @@ pub fn local_handler(sender: ExtSender) {
             let shortcut = match event_type {
                 NSEventType::KeyDown => Shortcut {
                     key_code: Some(key_code),
-                    mods: if mods.0 != 0 {
-                        Some(mods.0 as usize)
-                    } else {
-                        None
-                    },
+                    mods: if mods.0 != 0 { Some(mods.0) } else { None },
                 },
                 NSEventType::FlagsChanged => Shortcut {
                     key_code: None,
-                    mods: if mods.0 != 0 {
-                        Some(mods.0 as usize)
-                    } else {
-                        None
-                    },
+                    mods: if mods.0 != 0 { Some(mods.0) } else { None },
                 },
                 _ => return event.as_ptr(), // pass through unhandled events
             };
