@@ -2,12 +2,38 @@
 pub mod clipboard;
 pub mod discovery;
 pub mod haptics;
+pub mod launching;
 
 use iced::wgpu::rwh::WindowHandle;
 
 pub(super) use self::clipboard::{get_copied_files, put_copied_files};
 pub(super) use self::discovery::get_installed_apps;
 pub(super) use self::haptics::perform_haptic;
+
+use objc2_service_management::SMAppService;
+
+pub fn start_at_login() {
+    unsafe {
+        SMAppService::mainAppService().registerAndReturnError().ok();
+    }
+}
+
+pub fn stop_at_login() {
+    unsafe {
+        SMAppService::mainAppService()
+            .unregisterAndReturnError()
+            .ok();
+    }
+}
+
+pub fn get_autostart_status() -> bool {
+    unsafe {
+        SMAppService::mainAppService()
+            .registerAndReturnError()
+            .ok()
+            .is_some()
+    }
+}
 
 /// This sets the activation policy of the app to Accessory, allowing rustcast to be visible ontop
 /// of fullscreen apps

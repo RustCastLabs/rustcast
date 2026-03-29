@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, io::Cursor};
 
-use global_hotkey::hotkey::{Code, HotKey, Modifiers};
+use global_hotkey::hotkey::{Code, Modifiers};
 use image::{DynamicImage, ImageReader};
 use log::info;
 use tray_icon::{
@@ -16,6 +16,7 @@ use tray_icon::{
 use crate::{
     app::{Message, tile::ExtSender},
     config::Config,
+    platform::macos::launching::Shortcut,
     utils::open_url,
 };
 
@@ -39,14 +40,15 @@ pub fn menu_icon(config: Config, sender: ExtSender) -> TrayIcon {
 }
 
 pub fn menu_builder(config: Config, sender: ExtSender, update_item: bool) -> Menu {
-    let hotkey = config.toggle_hotkey.parse::<HotKey>().ok();
+    let shortcut =
+        Shortcut::parse(&config.toggle_hotkey).unwrap_or(Shortcut::parse("opt+space").unwrap());
 
     let mut modes = config.modes;
     if !modes.contains_key("default") {
         modes.insert("Default".to_string(), "default".to_string());
     }
 
-    init_event_handler(sender, hotkey.map(|x| x.id));
+    init_event_handler(sender, shortcut);
 
     Menu::with_items(&[
         &MenuItem::with_id(
@@ -64,7 +66,7 @@ pub fn menu_builder(config: Config, sender: ExtSender, update_item: bool) -> Men
         &open_github_item(),
         &PredefinedMenuItem::separator(),
         &refresh_item(),
-        &open_item(hotkey),
+        &open_item(),
         &mode_item(modes),
         &PredefinedMenuItem::separator(),
         &open_issue_item(),
@@ -86,10 +88,12 @@ fn get_image() -> DynamicImage {
         .unwrap()
 }
 
-fn init_event_handler(sender: ExtSender, hotkey_id: Option<u32>) {
+fn init_event_handler(sender: ExtSender, shortcut: Shortcut) {
     let runtime = Runtime::new().unwrap();
+    let shortcut = shortcut.clone();
 
     MenuEvent::set_event_handler(Some(move |x: MenuEvent| {
+        let shortcut = shortcut.clone();
         let sender = sender.clone();
         let sender = sender.0.clone();
         info!("Menubar event called: {}", x.id.0);
@@ -107,11 +111,12 @@ fn init_event_handler(sender: ExtSender, hotkey_id: Option<u32>) {
                 open_url("https://github.com/RustCastLabs/rustcast/issues/new");
             }
             "show_rustcast" => {
-                if let Some(hk) = hotkey_id {
-                    runtime.spawn(async move {
-                        sender.clone().try_send(Message::KeyPressed(hk)).unwrap();
-                    });
-                }
+                runtime.spawn(async move {
+                    sender
+                        .clone()
+                        .try_send(Message::KeyPressed(shortcut.clone()))
+                        .unwrap();
+                });
             }
             "update" => {
                 open_url("https://github.com/RustCastLabs/rustcast/releases/latest");
@@ -178,13 +183,8 @@ fn mode_item(modes: HashMap<String, String>) -> Submenu {
     Submenu::with_items("Modes", true, &items).unwrap()
 }
 
-fn open_item(hotkey: Option<HotKey>) -> MenuItem {
-    MenuItem::with_id(
-        "show_rustcast",
-        "Toggle View",
-        true,
-        hotkey.map(|hk| Accelerator::new(Some(hk.mods), hk.key)),
-    )
+fn open_item() -> MenuItem {
+    MenuItem::with_id("show_rustcast", "Toggle View", true, None)
 }
 
 fn open_github_item() -> MenuItem {

@@ -48,7 +48,7 @@
 ### Via Homebrew:
 
 ```
-brew install --cask RustCastLabs/tap/rustcast
+brew install --cask unsecretised/tap/rustcast
 ```
 
 ### Via github releases

@@ -13,17 +13,14 @@ mod styles;
 mod unit_conversion;
 mod utils;
 
-use std::{fs::OpenOptions, path::Path};
+use std::{collections::HashMap, fs::OpenOptions, path::Path};
 
 use crate::{
-    app::tile::{self, Tile},
+    app::tile::{self, Hotkeys, Tile},
     config::Config,
+    platform::macos::{get_autostart_status, launching::Shortcut},
 };
 
-use global_hotkey::{
-    GlobalHotKeyManager,
-    hotkey::{Code, HotKey, Modifiers},
-};
 use log::info;
 use tracing_subscriber::{EnvFilter, Layer, util::SubscriberInitExt};
 
@@ -44,10 +41,12 @@ fn main() -> iced::Result {
         .unwrap();
     }
 
-    let config: Config = match std::fs::read_to_string(&file_path) {
+    let mut config: Config = match std::fs::read_to_string(&file_path) {
         Ok(a) => toml::from_str(&a).unwrap_or(Config::default()),
         Err(_) => Config::default(),
     };
+
+    config.start_at_login = get_autostart_status();
 
     if cfg!(debug_assertions) {
         let sub = tracing_subscriber::fmt().finish();
@@ -65,36 +64,33 @@ fn main() -> iced::Result {
 
     info!("Config loaded");
 
-    let manager = GlobalHotKeyManager::new().unwrap();
+    let show_hide =
+        Shortcut::parse(&config.toggle_hotkey).unwrap_or(Shortcut::parse("option+space").unwrap());
 
-    let show_hide = config
-        .toggle_hotkey
-        .parse()
-        .unwrap_or(HotKey::new(Some(Modifiers::ALT), Code::Space));
+    let cbhist = Shortcut::parse(&config.clipboard_hotkey.to_lowercase())
+        .unwrap_or_else(|_| Shortcut::parse("cmd+shift+c").unwrap());
 
-    let cbhist = config
-        .clipboard_hotkey
-        .parse()
-        .unwrap_or("SUPER+SHIFT+C".parse().unwrap());
+    let mut shell_map = HashMap::new();
 
-    let mut hotkeys = vec![show_hide, cbhist];
     for shell in &config.shells {
         if let Some(hk_str) = &shell.hotkey
-            && let Ok(hk) = hk_str.parse::<HotKey>()
+            && let Ok(hk) = Shortcut::parse(hk_str)
         {
-            hotkeys.push(hk);
+            shell_map.insert(hk, shell.clone());
         }
     }
 
-    manager
-        .register_all(&hotkeys)
-        .expect("Unable to register hotkeys");
+    let hotkeys = Hotkeys {
+        toggle: show_hide,
+        clipboard_hotkey: cbhist,
+        shells: shell_map,
+    };
 
     info!("Hotkeys loaded");
     info!("Starting rustcast");
 
     iced::daemon(
-        move || tile::elm::new(show_hide, &config),
+        move || tile::elm::new(hotkeys.clone(), &config),
         tile::update::handle_update,
         tile::elm::view,
     )
