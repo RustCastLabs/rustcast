@@ -213,11 +213,12 @@ impl App {
 
         let name = self.search_name.clone();
         let theme_clone = theme.clone();
+        let is_favourite = self.ranking == -1;
         row = row.push(
             Button::new(Text::new("♥️").width(Length::Fill).align_x(Alignment::End))
                 .on_press_with(move || Message::ToggleFavouriteApp(name.clone()))
                 .width(Length::Fill)
-                .style(move |_, status| favourite_button_style(&theme_clone, status)),
+                .style(move |_, status| favourite_button_style(&theme_clone, status, is_favourite)),
         );
 
         let msg = on_press.or(match self.open_command.clone() {

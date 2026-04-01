@@ -109,16 +109,14 @@ impl AppIndex {
     }
 
     fn get_favourites(&self) -> Vec<App> {
-        self.by_name
+        let mut favs: Vec<App> = self
+            .by_name
             .values()
-            .filter_map(|x| {
-                if x.ranking == -1 {
-                    Some(x.to_owned())
-                } else {
-                    None
-                }
-            })
-            .collect()
+            .filter(|x| x.ranking == -1)
+            .cloned()
+            .collect();
+        favs.sort_by(|a, b| a.display_name.cmp(&b.display_name));
+        favs
     }
 
     fn empty() -> AppIndex {
