@@ -75,12 +75,23 @@ pub fn result_button_style(theme: &ConfigTheme) -> button::Style {
     }
 }
 
-pub fn favourite_button_style(theme: &ConfigTheme, status: button::Status) -> button::Style {
-    let text_color = match status {
-        button::Status::Pressed => theme.text_color(1.),
-        button::Status::Hovered => theme.text_color(0.5),
-        button::Status::Active => theme.text_color(0.1),
-        button::Status::Disabled => theme.text_color(0.1),
+pub fn favourite_button_style(
+    theme: &ConfigTheme,
+    status: button::Status,
+    is_favourite: bool,
+) -> button::Style {
+    let text_color = if is_favourite {
+        match status {
+            button::Status::Pressed => theme.text_color(0.8),
+            button::Status::Hovered => theme.text_color(0.9),
+            _ => theme.text_color(1.),
+        }
+    } else {
+        match status {
+            button::Status::Pressed => theme.text_color(1.),
+            button::Status::Hovered => theme.text_color(0.5),
+            _ => theme.text_color(0.1),
+        }
     };
 
     button::Style {
