@@ -2,7 +2,6 @@
 
 use std::{collections::HashMap, io::Cursor};
 
-use global_hotkey::hotkey::{Code, Modifiers};
 use image::{DynamicImage, ImageReader};
 use log::info;
 use tray_icon::{
