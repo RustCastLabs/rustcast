@@ -9,7 +9,7 @@ use tray_icon::{
     Icon, TrayIcon, TrayIconBuilder,
     menu::{
         AboutMetadataBuilder, Icon as Ico, IsMenuItem, Menu, MenuEvent, MenuItem,
-        PredefinedMenuItem, Submenu, accelerator::Accelerator,
+        PredefinedMenuItem, Submenu,
     },
 };
 
@@ -196,24 +196,11 @@ fn open_issue_item() -> MenuItem {
 }
 
 fn refresh_item() -> MenuItem {
-    MenuItem::with_id(
-        "refresh_rustcast",
-        "Refresh",
-        true,
-        Some(Accelerator::new(
-            Some(Modifiers::SUPER),
-            global_hotkey::hotkey::Code::KeyR,
-        )),
-    )
+    MenuItem::with_id("refresh_rustcast", "Refresh", true, None)
 }
 
 fn open_settings_item() -> MenuItem {
-    MenuItem::with_id(
-        "open_preferences",
-        "Open Preferences",
-        true,
-        Some(Accelerator::new(Some(Modifiers::SUPER), Code::Comma)),
-    )
+    MenuItem::with_id("open_preferences", "Open Preferences", true, None)
 }
 
 fn get_help_item() -> MenuItem {

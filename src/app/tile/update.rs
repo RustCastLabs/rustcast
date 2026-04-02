@@ -331,6 +331,7 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                     cmd.command.clone(),
                 )));
             }
+
             let is_clipboard_hotkey = shortcut == tile.hotkeys.clipboard_hotkey;
             let is_open_hotkey = shortcut == tile.hotkeys.toggle;
 
