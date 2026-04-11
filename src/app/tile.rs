@@ -10,7 +10,6 @@ use crate::debounce::Debouncer;
 use crate::platform::default_app_paths;
 use crate::platform::macos::launching::Shortcut;
 
-use arboard::Clipboard;
 
 use iced::futures::SinkExt;
 use iced::futures::channel::mpsc::{Sender, channel};
@@ -33,6 +32,7 @@ use tray_icon::TrayIcon;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// This is a wrapper around the sender to disable dropping
@@ -82,7 +82,7 @@ impl AppIndex {
 
     fn get_rankings(&self) -> HashMap<String, i32> {
         HashMap::from_iter(self.by_name.iter().filter_map(|(name, app)| {
-            if app.ranking > 0 {
+            if app.ranking != 0 {
                 Some((name.to_owned(), app.ranking.to_owned()))
             } else {
                 None
@@ -179,6 +179,7 @@ pub struct Tile {
     page: Page,
     pub height: f32,
     pub file_search_sender: Option<tokio::sync::watch::Sender<(String, Vec<String>)>>,
+    pub db: Arc<crate::database::Database>,
     debouncer: Debouncer,
 }
 
@@ -333,27 +334,53 @@ impl Tile {
 /// This is the subscription function that handles the change in clipboard history
 fn handle_clipboard_history() -> impl futures::Stream<Item = Message> {
     stream::channel(100, async |mut output| {
-        let mut clipboard = Clipboard::new().unwrap();
-        let mut prev_byte_rep: Option<ClipBoardContentType> = None;
+        let initial_files = crate::platform::get_copied_files();
+        let initial_img = crate::platform::get_copied_image();
+        
+        let mut prev_byte_rep = if let Some(files) = initial_files {
+            Some(ClipBoardContentType::Files(files, initial_img))
+        } else if let Some(img) = initial_img {
+            Some(ClipBoardContentType::Image(img))
+        } else if let Some(a) = crate::platform::get_copied_text() {
+            if !a.trim().is_empty() { Some(ClipBoardContentType::Text(a)) } else { None }
+        } else {
+            None
+        };
 
         loop {
-            let byte_rep = if let Ok(a) = clipboard.get_image() {
-                Some(ClipBoardContentType::Image(a))
-            } else if let Ok(a) = clipboard.get_text()
-                && !a.trim().is_empty()
-            {
-                Some(ClipBoardContentType::Text(a))
+            let files_opt = crate::platform::get_copied_files();
+            let img_opt = crate::platform::get_copied_image();
+
+            let byte_rep = if let Some(files) = files_opt {
+                Some(ClipBoardContentType::Files(files, img_opt))
+            } else if let Some(img) = img_opt {
+                Some(ClipBoardContentType::Image(img))
+            } else if let Some(a) = crate::platform::get_copied_text() {
+                if !a.trim().is_empty() {
+                    Some(ClipBoardContentType::Text(a))
+                } else {
+                    None
+                }
             } else {
                 None
             };
 
             if byte_rep != prev_byte_rep
-                && let Some(content) = &byte_rep
+                && let Some(content_ref) = &byte_rep
             {
+                let mut content = content_ref.clone();
+                if let ClipBoardContentType::Files(ref files, ref mut img_opt) = content {
+                    if files.len() > 1 {
+                        if let Some(multi) = crate::clipboard::generate_multi_file_thumbnail(files) {
+                            *img_opt = Some(multi);
+                        }
+                    }
+                }
+
                 info!("Adding item to cbhist");
                 output
                     .send(Message::EditClipboardHistory(crate::app::Editable::Create(
-                        content.to_owned(),
+                        content,
                     )))
                     .await
                     .ok();

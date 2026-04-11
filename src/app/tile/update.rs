@@ -12,7 +12,7 @@ use iced::widget::operation::AbsoluteOffset;
 use iced::window;
 use iced::window::Id;
 use log::info;
-use rayon::iter::IntoParallelRefIterator;
+use crate::clipboard::ClipBoardContentType;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSliceMut;
 
@@ -254,11 +254,14 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
         }
 
         Message::SaveRanking => {
-            tile.ranking = tile.options.get_rankings();
-            let string_rep = toml::to_string(&tile.ranking).unwrap_or("".to_string());
-            let ranking_file_path =
-                std::env::var("HOME").unwrap_or("/".to_string()) + "/.config/rustcast/ranking.toml";
-            fs::write(ranking_file_path, string_rep).ok();
+            for (name, rank) in tile.options.get_rankings() {
+                tile.ranking.insert(name, rank);
+            }
+            for (name, rank) in &tile.ranking {
+                if let Err(e) = tile.db.save_ranking(name, *rank) {
+                    log::error!("Database save ranking error: {}", e);
+                }
+            }
             Task::none()
         }
 
@@ -388,6 +391,35 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                     if !tile.config.cbhist {
                         return Task::none();
                     }
+                    let db_history = tile.db.get_clipboard_history(300).unwrap_or_default();
+                    let mut unique: Vec<crate::clipboard::ClipBoardContentType> = Vec::new();
+                    for mut item in db_history {
+                        let mut found_dup = false;
+                        for x in &mut unique {
+                            match (x, &mut item) {
+                                (crate::clipboard::ClipBoardContentType::Files(f1, img1), crate::clipboard::ClipBoardContentType::Files(f2, img2)) => {
+                                    if f1 == f2 {
+                                        found_dup = true;
+                                        if img1.is_none() && img2.is_some() {
+                                            *img1 = img2.take();
+                                        }
+                                        break;
+                                    }
+                                }
+                                (crate::clipboard::ClipBoardContentType::Text(t1), crate::clipboard::ClipBoardContentType::Text(t2)) => {
+                                    if t1 == t2 { found_dup = true; break; }
+                                }
+                                (crate::clipboard::ClipBoardContentType::Image(i1), crate::clipboard::ClipBoardContentType::Image(i2)) => {
+                                    if i1.bytes == i2.bytes { found_dup = true; break; }
+                                }
+                                _ => {}
+                            }
+                        }
+                        if !found_dup {
+                            unique.push(item);
+                        }
+                    }
+                    tile.clipboard_content = unique;
                     window::latest().map(|x| {
                         let id = x.unwrap();
                         Message::ResizeWindow(
@@ -457,6 +489,7 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             tile.focused = false;
             tile.page = Page::Main;
             tile.focus_id = 0;
+            tile.clipboard_content.clear();
 
             Task::batch([window::close(a), Task::done(Message::ClearSearchResults)])
         }
@@ -489,18 +522,23 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
         }
 
         Message::ToggleFavouriteApp(app_name) => {
-            let ranking = match tile.options.by_name.get(&app_name) {
-                None => return Task::none(),
-                Some(app) => {
-                    if app.ranking == -1 {
-                        0
-                    } else {
-                        -1
-                    }
-                }
+            let ranking = if let Some(app) = tile.options.by_name.get(&app_name) {
+                if app.ranking == -1 { 0 } else { -1 }
+            } else if let Some(&r) = tile.ranking.get(&app_name) {
+                if r == -1 { 0 } else { -1 }
+            } else {
+                -1
             };
             tile.options.set_ranking(&app_name, ranking);
-            Task::none()
+            if let Err(e) = tile.db.save_ranking(&app_name, ranking) {
+                log::error!("Database save ranking error: {}", e);
+            }
+            tile.ranking.insert(app_name, ranking);
+            
+            let query = tile.query.clone();
+            window::latest()
+                .map(|x| x.unwrap())
+                .map(move |id| Message::SearchQueryChanged(query.clone(), id))
         }
 
         Message::UpdateApps => {
@@ -544,28 +582,39 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                 return Task::none();
             }
             match action {
-                Editable::Create(content) => {
-                    if !tile.clipboard_content.contains(&content) {
-                        tile.clipboard_content.insert(0, content);
-                        return Task::none();
+                Editable::Create(mut content) => {
+                    if let ClipBoardContentType::Files(ref new_f, None) = content {
+                        if let Some(ClipBoardContentType::Files(_, Some(old_img))) = tile.clipboard_content.iter().find(|x| {
+                            if let ClipBoardContentType::Files(old_f, Some(_)) = x {
+                                old_f == new_f
+                            } else {
+                                false
+                            }
+                        }) {
+                            content = ClipBoardContentType::Files(new_f.clone(), Some(old_img.clone()));
+                        }
                     }
 
-                    let new_content_vec = tile
-                        .clipboard_content
-                        .par_iter()
-                        .filter_map(|x| {
-                            if *x == content {
-                                None
-                            } else {
-                                Some(x.to_owned())
-                            }
-                        })
-                        .collect();
-
-                    tile.clipboard_content = new_content_vec;
-                    tile.clipboard_content.insert(0, content);
+                    tile.clipboard_content.retain(|x| {
+                        match (x, &content) {
+                            (ClipBoardContentType::Files(f1, _), ClipBoardContentType::Files(f2, _)) => f1 != f2,
+                            (ClipBoardContentType::Image(i1), ClipBoardContentType::Files(_, Some(i2))) => i1.bytes != i2.bytes,
+                            (ClipBoardContentType::Files(_, Some(i1)), ClipBoardContentType::Image(i2)) => i1.bytes != i2.bytes,
+                            _ => x != &content,
+                        }
+                    });
+                    tile.clipboard_content.insert(0, content.clone());
+                    if let Err(e) = tile.db.save_clipboard_item(&content) {
+                        log::error!("Database save clipboard error: {}", e);
+                    }
                 }
                 Editable::Delete(content) => {
+                    let search_name = content.to_app().search_name;
+                    tile.ranking.remove(&search_name);
+                    if let Err(e) = tile.db.save_ranking(&search_name, 0) {
+                        log::error!("Database pin wipe error: {}", e);
+                    }
+
                     tile.clipboard_content = tile
                         .clipboard_content
                         .iter()
@@ -577,6 +626,9 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                             }
                         })
                         .collect();
+                    if let Err(e) = tile.db.delete_clipboard_item(&content) {
+                        log::error!("Database delete clipboard item error: {}", e);
+                    }
                 }
                 Editable::Update { old, new } => {
                     tile.clipboard_content = tile
@@ -584,6 +636,12 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                         .iter()
                         .map(|x| if x == &old { new.clone() } else { x.to_owned() })
                         .collect();
+                    if let Err(e) = tile.db.delete_clipboard_item(&old) {
+                        log::error!("Database delete clipboard item error: {}", e);
+                    }
+                    if let Err(e) = tile.db.save_clipboard_item(&new) {
+                        log::error!("Database save clipboard item error: {}", e);
+                    }
                 }
             }
             Task::none()
@@ -831,7 +889,18 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
         }
 
         Message::ClearClipboardHistory => {
+            for content in &tile.clipboard_content {
+                let name = content.to_app().search_name;
+                tile.ranking.remove(&name);
+                if let Err(e) = tile.db.save_ranking(&name, 0) {
+                    log::error!("Database pin wipe error: {}", e);
+                }
+            }
             tile.clipboard_content.clear();
+            if let Err(e) = tile.db.clear_clipboard() {
+                log::error!("Database clear clipboard error: {}", e);
+            }
+
             Task::none()
         }
 
