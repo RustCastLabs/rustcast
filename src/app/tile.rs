@@ -54,7 +54,10 @@ impl AppIndex {
     /// Search for an element in the index that starts with the provided prefix
     fn search_prefix<'a>(&'a self, prefix: &'a str) -> impl ParallelIterator<Item = &'a App> + 'a {
         self.by_name.par_iter().filter_map(move |(name, app)| {
-            if name.starts_with(prefix) || name.contains(format!(" {prefix}").as_str()) {
+            if name.starts_with(prefix)
+                || name.contains(format!(" {prefix}").as_str())
+                || name.contains(format!("-{prefix}").as_str())
+            {
                 Some(app)
             } else {
                 None
