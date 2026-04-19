@@ -294,3 +294,14 @@ pub fn glass_border(base_text: Color, focused: bool) -> Color {
     let a = if focused { 0.35 } else { 0.22 };
     with_alpha(base_text, a)
 }
+
+pub fn clipboard_image_border_style() -> container::Style {
+    container::Style {
+        border: Border {
+            color: Color::WHITE,
+            width: 1.,
+            radius: Radius::new(0.),
+        },
+        ..Default::default()
+    }
+}

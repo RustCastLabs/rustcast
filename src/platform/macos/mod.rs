@@ -1,10 +1,12 @@
 //! Macos specific logic, such as window settings, etc.
+pub mod clipboard;
 pub mod discovery;
 pub mod haptics;
 pub mod launching;
 
 use iced::wgpu::rwh::WindowHandle;
 
+pub(super) use self::clipboard::{get_copied_files, put_copied_files};
 pub(super) use self::discovery::get_installed_apps;
 pub(super) use self::haptics::perform_haptic;
 
