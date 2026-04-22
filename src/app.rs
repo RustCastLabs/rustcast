@@ -80,6 +80,7 @@ pub enum Editable<T> {
 /// The message type that iced uses for actions that can do something
 #[derive(Debug, Clone)]
 pub enum Message {
+    UriReceived(String),
     WriteConfig(bool),
     SaveRanking,
     ToggleAutoStartup(bool),
