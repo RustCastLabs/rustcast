@@ -1008,6 +1008,19 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
             }];
             return single_item_resize_task(id);
         }
+        "zombo" => {
+            tile.results = vec![App {
+                ranking: 0,
+                open_command: AppCommand::Function(Function::OpenWebsite(
+                    "https://zombo.com".to_string(),
+                )),
+                desc: "Easter Egg".to_string(),
+                icons: None,
+                display_name: "🫳 🌱".to_string(),
+                search_name: "".to_string(),
+            }];
+            return single_item_resize_task(id);
+        }
         "lemon" => {
             tile.results = vec![App {
                 ranking: 0,
