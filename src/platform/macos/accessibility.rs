@@ -2,10 +2,10 @@ use std::ffi::c_void;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use log::info;
 use objc2::rc::autoreleasepool;
 use objc2::runtime::AnyObject;
 use objc2::{class, msg_send};
-use log::info;
 
 #[link(name = "ApplicationServices", kind = "framework")]
 unsafe extern "C" {

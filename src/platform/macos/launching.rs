@@ -3,7 +3,10 @@ use std::sync::{Arc, Mutex};
 use block2::RcBlock;
 use objc2_app_kit::{NSEvent, NSEventMask, NSEventModifierFlags, NSEventType};
 
-use crate::{app::{Message, tile::ExtSender}, platform::macos::accessibility::ensure_accessibility_permission};
+use crate::{
+    app::{Message, tile::ExtSender},
+    platform::macos::accessibility::ensure_accessibility_permission,
+};
 
 pub fn global_handler(sender: ExtSender) {
     ensure_accessibility_permission();
