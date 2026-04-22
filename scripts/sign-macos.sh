@@ -1,5 +1,7 @@
 #!/usr/bin/env -S bash -e
 
+ENTITLEMENTS_PATH="assets/macos/entitlements.plist"
+
 APP_BUNDLE_PATH="${APP_BUNDLE_PATH:?APP_BUNDLE_PATH not set}"
 
 # 1. Create a temporary keychain and import certificate
@@ -29,6 +31,7 @@ security set-key-partition-list -S apple-tool:,apple:,codesign: \
 
 # 2. Sign app bundle
 codesign --deep --force --options runtime --timestamp \
+  --entitlements $ENTITLEMENTS_PATH \
   --sign "$MACOS_CERTIFICATE_NAME" \
   "$APP_BUNDLE_PATH"
 
