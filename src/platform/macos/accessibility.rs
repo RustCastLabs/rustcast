@@ -1,3 +1,4 @@
+/// Taken from: <https://github.com/acsandmann/rift/blob/main/src/sys/accessibility.rs>
 use std::ffi::c_void;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -82,7 +83,7 @@ pub fn ensure_accessibility_permission() {
     }
 
     println!(
-        "Rift still does not have accessibility permission. Enable it in System Settings > Privacy & Security > Accessibility, then restart Rift."
+        "Rustcast still does not have accessibility permission. Enable it in System Settings > Privacy & Security > Accessibility, then restart Rustcast."
     );
 
     std::process::exit(1);
