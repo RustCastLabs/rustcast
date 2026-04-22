@@ -66,6 +66,8 @@ pub fn new(hotkeys: Hotkeys, config: &Config) -> (Tile, Task<Message>) {
     )
     .unwrap_or(HashMap::new());
 
+    crate::platform::macos::urlscheme::install();
+
     (
         Tile {
             update_available: false,

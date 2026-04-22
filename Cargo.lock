@@ -3855,6 +3855,7 @@ version = "0.7.2"
 dependencies = [
  "arboard",
  "block2 0.6.2",
+ "crossbeam-channel",
  "emojis",
  "global-hotkey",
  "iced",

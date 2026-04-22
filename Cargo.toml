@@ -10,6 +10,7 @@ repository = "https://github.com/RustCastLabs/rustcast"
 [dependencies]
 arboard = "3.6.1"
 block2 = "0.6.2"
+crossbeam-channel = "0.5.15"
 emojis = "0.8.0"
 global-hotkey = "0.7.0"
 iced = { version = "0.14.0", features = ["image", "tokio"] }
