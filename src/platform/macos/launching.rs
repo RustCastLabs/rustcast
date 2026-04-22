@@ -3,9 +3,13 @@ use std::sync::{Arc, Mutex};
 use block2::RcBlock;
 use objc2_app_kit::{NSEvent, NSEventMask, NSEventModifierFlags, NSEventType};
 
-use crate::app::{Message, tile::ExtSender};
+use crate::{
+    app::{Message, tile::ExtSender},
+    platform::macos::accessibility::ensure_accessibility_permission,
+};
 
 pub fn global_handler(sender: ExtSender) {
+    ensure_accessibility_permission();
     local_handler(sender.clone());
     let mask = NSEventMask::KeyDown | NSEventMask::FlagsChanged;
     let sender = Arc::new(Mutex::new(sender.0.clone()));
