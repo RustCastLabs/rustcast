@@ -3,16 +3,11 @@
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Required for global key monitoring -->
-    <key>com.apple.security.temporary-exception.accessibility</key>
-    <true/>
-
-    <!-- If using App Sandbox (Mac App Store) -->
     <key>com.apple.security.app-sandbox</key>
     <false/>
-
-    <!-- Input monitoring - needed for global key events -->
     <key>com.apple.security.device.input-monitoring</key>
+    <true/>
+    <key>com.apple.security.temporary-exception.accessibility</key>
     <true/>
 </dict>
 </plist>

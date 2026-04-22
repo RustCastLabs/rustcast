@@ -1,6 +1,6 @@
 #!/usr/bin/env -S bash -e
 
-ENTITLEMENTS_PATH="assets/macos/entitlements.plist"
+ENTITLEMENTS_PATH="assets/entitlements.plist"
 
 APP_BUNDLE_PATH="${APP_BUNDLE_PATH:?APP_BUNDLE_PATH not set}"
 
