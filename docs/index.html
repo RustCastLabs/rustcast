@@ -260,6 +260,83 @@
 
     <div class="divider"></div>
 
+    <div class="divider"></div>
+
+    <!-- DEEPLINKS -->
+    <section id="deeplinks">
+      <div class="modes-section">
+        <div class="section-label">// deeplinks</div>
+        <h2>Automate with<br />URL schemes.</h2>
+        <p class="section-desc">
+          RustCast exposes a <code>rustcast://</code> URL scheme (v0.7.4+).
+          Trigger it from scripts, shortcuts, browsers, or any tool that can
+          open a URL.
+        </p>
+
+        <div class="modes-grid" style="margin-top: 2.5rem">
+          <div class="mode-card">
+            <div class="mode-tag">open</div>
+            <div class="mode-title">Launch an App</div>
+            <p class="mode-desc" style="margin-bottom: 1rem">
+              Open any installed application by name.
+            </p>
+            <pre
+              style="margin: 0; padding: 0.9rem 1rem; background: var(--bg2); border-radius: 6px; font-size: 0.75rem"
+            >
+<span class="c-str">rustcast://open?target=obsidian</span></pre>
+          </div>
+
+          <div class="mode-card">
+            <div class="mode-tag">show</div>
+            <div class="mode-title">Show RustCast</div>
+            <p class="mode-desc" style="margin-bottom: 1rem">
+              Bring the launcher to the foreground — useful in Shortcuts or
+              shell scripts.
+            </p>
+            <pre
+              style="margin: 0; padding: 0.9rem 1rem; background: var(--bg2); border-radius: 6px; font-size: 0.75rem"
+            >
+<span class="c-str">rustcast://show</span></pre>
+          </div>
+
+          <div class="mode-card">
+            <div class="mode-tag">quit</div>
+            <div class="mode-title">Quit RustCast</div>
+            <p class="mode-desc" style="margin-bottom: 1rem">
+              Gracefully quit the app from a script or automation flow.
+            </p>
+            <pre
+              style="margin: 0; padding: 0.9rem 1rem; background: var(--bg2); border-radius: 6px; font-size: 0.75rem"
+            >
+<span class="c-str">rustcast://quit</span></pre>
+          </div>
+        </div>
+
+        <!-- Usage example block -->
+        <div
+          class="install-block active"
+          style="margin-top: 2.5rem; text-align: left"
+        >
+          <div class="install-block-bar">
+            <span class="install-block-title">Terminal — example usage</span>
+            <span
+              style="font-family: var(--mono); font-size: 0.65rem; color: var(--rust)"
+            >v0.7.4+</span>
+          </div>
+          <div class="install-code">
+            <span class="comment"># Show the launcher</span><br>
+            <span class="cmd">open</span> "rustcast://show"<br>
+            <br>
+            <span class="comment"># Open Obsidian via RustCast</span><br>
+            <span class="cmd">open</span> "rustcast://open?target=obsidian"<br>
+            <br>
+            <span class="comment"># Quit RustCast from a script</span><br>
+            <span class="cmd">open</span> "rustcast://quit"<br>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- CONFIG -->
     <section id="config">
       <div class="config-section">
