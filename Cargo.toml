@@ -10,6 +10,7 @@ repository = "https://github.com/RustCastLabs/rustcast"
 [dependencies]
 arboard = "3.6.1"
 block2 = "0.6.2"
+crossbeam-channel = "0.5.15"
 emojis = "0.8.0"
 global-hotkey = "0.7.0"
 iced = { version = "0.14.0", features = ["image", "tokio"] }
@@ -35,3 +36,7 @@ toml = "0.9.8"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 tray-icon = "0.21.3"
 url = { version = "2.5.8", default-features = false }
+
+[package.metadata.bundle]
+info_plist = "assets/macos/RustCast.app/Contents/Resources/Info.plist"
+identifier = "com.umangsurana.rustcast"

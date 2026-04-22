@@ -1,32 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
-    <key>CFBundleExecutable</key>
-    <string>rustcast</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.umangsurana.rustcast</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>RustCast</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2025 Umang Surana. All rights reserved.</string>
-    <key>NSInputMonitoringUsageDescription</key>
-    <string>RustCast needs to monitor keyboard input to detect global shortcuts and control casting.</string>
-    <key>CFBundleIconFile</key>
-    <string>icon</string>
-</dict>
+	<dict>
+		<key>CFBundleDevelopmentRegion</key>
+		<string>en</string>
+		<key>CFBundleExecutable</key>
+		<string>rustcast</string>
+		<key>CFBundleIdentifier</key>
+		<string>com.umangsurana.rustcast</string>
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+		<key>CFBundleName</key>
+		<string>RustCast</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>CFBundleShortVersionString</key>
+		<string>1.0</string>
+		<key>CFBundleVersion</key>
+		<string>1</string>
+		<key>LSUIElement</key>
+		<true/>
+		<key>NSHighResolutionCapable</key>
+		<true/>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>rustcast</string>
+				</array>
+				<key>CFBundleURLName</key>
+				<string>com.umangsurana.rustcast</string>
+			</dict>
+		</array>
+		<key>NSHumanReadableCopyright</key>
+		<string>Copyright © 2025 Umang Surana. All rights reserved.</string>
+		<key>NSInputMonitoringUsageDescription</key>
+		<string>RustCast needs to monitor keyboard input to detect global shortcuts and control casting.</string>
+		<key>CFBundleIconFile</key>
+		<string>icon</string>
+	</dict>
 </plist>

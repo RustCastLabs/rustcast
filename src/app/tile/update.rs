@@ -15,6 +15,7 @@ use log::info;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use rayon::slice::ParallelSliceMut;
+use url::Url;
 
 use crate::app::Editable;
 use crate::app::SetConfigBufferFields;
@@ -46,6 +47,12 @@ use crate::{app::DEFAULT_WINDOW_HEIGHT, platform::perform_haptic};
 use crate::{app::Move, platform::HapticPattern};
 use crate::{app::RUSTCAST_DESC_NAME, platform::get_installed_apps};
 
+fn extract_target(url: &Url) -> Option<String> {
+    url.query_pairs()
+        .find(|(key, _)| key == "target")
+        .map(|(_, value)| value.into_owned())
+}
+
 /// Handle the "elm" update
 pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
     match message {
@@ -61,6 +68,29 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                     .map(|id| Message::SearchQueryChanged(String::new(), id))
             } else {
                 Task::none()
+            }
+        }
+
+        Message::UriReceived(uri) => {
+            let Ok(url) = Url::parse(&uri) else {
+                return Task::none();
+            };
+
+            match url.host_str().unwrap_or("") {
+                "open" => extract_target(&url)
+                    .and_then(|x| tile.options.by_name.get(&x).map(|x| x.to_owned()))
+                    .map(|app| match app.open_command {
+                        AppCommand::Function(a) => Task::done(Message::RunFunction(a)),
+                        AppCommand::Display => Task::none(),
+                        AppCommand::Message(msg) => Task::done(msg),
+                    })
+                    .unwrap_or(Task::none()),
+
+                "show" => open_window(DEFAULT_WINDOW_HEIGHT),
+
+                "quit" => Task::done(Message::RunFunction(Function::Quit)),
+
+                _ => Task::none(),
             }
         }
 

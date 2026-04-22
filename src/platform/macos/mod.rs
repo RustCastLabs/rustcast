@@ -2,6 +2,7 @@
 pub mod discovery;
 pub mod haptics;
 pub mod launching;
+pub mod urlscheme;
 
 use iced::wgpu::rwh::WindowHandle;
 

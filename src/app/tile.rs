@@ -231,6 +231,7 @@ impl Tile {
         Subscription::batch([
             Subscription::run(handle_hot_reloading),
             keyboard,
+            Subscription::run(crate::platform::macos::urlscheme::url_stream),
             Subscription::run(handle_recipient),
             Subscription::run(handle_version_and_rankings),
             Subscription::run(handle_clipboard_history),
