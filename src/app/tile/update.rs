@@ -53,6 +53,52 @@ fn extract_target(url: &Url) -> Option<String> {
         .map(|(_, value)| value.into_owned())
 }
 
+#[derive(Debug, Clone, PartialEq)]
+enum QueryAction {
+    OpenWebsite(String),
+    UnitConversions(Vec<unit_conversion::ConversionResult>),
+    Calculation(Expr),
+    GoogleSearch(String),
+    ShellCommand(String),
+    ShowFavourites,
+    SwitchToPage(Page),
+}
+
+fn classify_query_action(page: &Page, query: &str, query_lc: &str) -> Option<QueryAction> {
+    match query_lc {
+        "cbhist" => return Some(QueryAction::SwitchToPage(Page::ClipboardHistory)),
+        "main" if *page != Page::Main => return Some(QueryAction::SwitchToPage(Page::Main)),
+        "fav" => return Some(QueryAction::ShowFavourites),
+        _ => {}
+    }
+
+    if query_lc.starts_with('>') && *page == Page::Main {
+        return Some(QueryAction::ShellCommand(
+            query.strip_prefix('>').unwrap_or("").to_string(),
+        ));
+    }
+
+    if is_valid_url(query) {
+        Some(QueryAction::OpenWebsite(query.to_string()))
+    } else if let Some(conversions) = unit_conversion::convert_query(query) {
+        Some(QueryAction::UnitConversions(conversions))
+    } else if let Ok(expr) = Expr::from_str(query) {
+        Some(QueryAction::Calculation(expr))
+    } else if query.ends_with('?') || query.split_whitespace().nth(2).is_some() {
+        Some(QueryAction::GoogleSearch(query.to_string()))
+    } else {
+        None
+    }
+}
+
+fn message_for_open_command(command: &AppCommand) -> Message {
+    match command {
+        AppCommand::Function(func) => Message::RunFunction(func.clone()),
+        AppCommand::Message(msg) => msg.clone(),
+        AppCommand::Display => Message::ReturnFocus,
+    }
+}
+
 /// Handle the "elm" update
 pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
     match message {
@@ -935,18 +981,18 @@ fn open_result(tile: &mut Tile, id: usize) -> Task<Message> {
 
     let search_name = app.search_name.clone();
 
-    match app.open_command {
-        AppCommand::Function(func) => {
+    match &app.open_command {
+        AppCommand::Function(_) => {
             info!("Updating ranking for: {search_name}");
             tile.options.update_ranking(&search_name);
-            Task::done(Message::RunFunction(func))
+            Task::done(message_for_open_command(&app.open_command))
         }
-        AppCommand::Message(msg) => {
+        AppCommand::Message(_) => {
             info!("Updating ranking for: {search_name}");
             tile.options.update_ranking(&search_name);
-            Task::done(msg)
+            Task::done(message_for_open_command(&app.open_command))
         }
-        AppCommand::Display => Task::done(Message::ReturnFocus),
+        AppCommand::Display => Task::done(message_for_open_command(&app.open_command)),
     }
 }
 
@@ -1043,35 +1089,43 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
             }];
             return single_item_resize_task(id);
         }
-        "cbhist" => {
-            task = task.chain(Task::done(Message::SwitchToPage(Page::ClipboardHistory)));
-        }
-        "main" => {
-            if tile.page != Page::Main {
-                task = task.chain(Task::done(Message::SwitchToPage(Page::Main)));
-                return Task::batch([zero_item_resize_task(id), task]);
-            }
-        }
-        "fav" => {
-            tile.results = tile.options.get_favourites();
-            return resize_for_results_count(id, tile.results.len());
-        }
-        query => 'a: {
-            if !query.starts_with(">") || tile.page != Page::Main {
-                break 'a;
-            }
-            let command = tile.query.strip_prefix(">").unwrap_or("");
-            tile.results = vec![App {
-                ranking: 20,
-                open_command: AppCommand::Function(Function::RunShellCommand(command.to_string())),
-                display_name: format!("Shell Command: {}", command),
-                icons: None,
-                search_name: "".to_string(),
-                desc: "Shell Command".to_string(),
-            }];
-            return single_item_resize_task(id);
-        }
+        _ => {}
     }
+
+    let deferred_action = if let Some(action) =
+        classify_query_action(&tile.page, &tile.query, &tile.query_lc)
+    {
+        match action {
+            QueryAction::SwitchToPage(page) => {
+                task = task.chain(Task::done(Message::SwitchToPage(page.clone())));
+                if page == Page::Main {
+                    return Task::batch([zero_item_resize_task(id), task]);
+                }
+                None
+            }
+            QueryAction::ShowFavourites => {
+                tile.results = tile.options.get_favourites();
+                return resize_for_results_count(id, tile.results.len());
+            }
+            QueryAction::ShellCommand(command) => {
+                tile.results = vec![App {
+                    ranking: 20,
+                    open_command: AppCommand::Function(Function::RunShellCommand(command.clone())),
+                    display_name: format!("Shell Command: {}", command),
+                    icons: None,
+                    search_name: "".to_string(),
+                    desc: "Shell Command".to_string(),
+                }];
+                return single_item_resize_task(id);
+            }
+            QueryAction::OpenWebsite(_)
+            | QueryAction::UnitConversions(_)
+            | QueryAction::Calculation(_)
+            | QueryAction::GoogleSearch(_) => Some(action),
+        }
+    } else {
+        None
+    };
 
     match tile.page {
         Page::FileSearch => {
@@ -1118,41 +1172,202 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
         ]));
     }
 
-    if is_valid_url(&tile.query) {
-        tile.results.push(App {
-            ranking: 0,
-            open_command: AppCommand::Function(Function::OpenWebsite(tile.query.clone())),
-            desc: "Web Browsing".to_string(),
-            icons: None,
-            display_name: "Open Website: ".to_string() + &tile.query,
-            search_name: String::new(),
-        });
-    } else if let Some(conversions) = unit_conversion::convert_query(&tile.query) {
-        tile.results = conversions
-            .into_iter()
-            .map(|conversion| conversion.to_app())
-            .collect();
-        return single_item_resize_task(id);
-    } else if let Ok(res) = Expr::from_str(&tile.query) {
-        tile.results.push(App {
-            ranking: 0,
-            open_command: AppCommand::Function(Function::Calculate(res.clone())),
-            desc: RUSTCAST_DESC_NAME.to_string(),
-            icons: None,
-            display_name: res.eval().map(|x| x.to_string()).unwrap_or("".to_string()),
-            search_name: "".to_string(),
-        });
-        return single_item_resize_task(id);
-    } else if tile.query.ends_with("?") || tile.query.split_whitespace().nth(2).is_some() {
-        tile.results = vec![App {
-            ranking: 0,
-            open_command: AppCommand::Function(Function::GoogleSearch(tile.query.clone())),
-            icons: None,
-            desc: "Web Search".to_string(),
-            display_name: format!("Search for: {}", tile.query),
-            search_name: String::new(),
-        }];
-        return single_item_resize_task(id);
+    if let Some(action) = deferred_action {
+        match action {
+            QueryAction::OpenWebsite(url) => {
+                tile.results.push(App {
+                    ranking: 0,
+                    open_command: AppCommand::Function(Function::OpenWebsite(url.clone())),
+                    desc: "Web Browsing".to_string(),
+                    icons: None,
+                    display_name: "Open Website: ".to_string() + &url,
+                    search_name: String::new(),
+                });
+            }
+            QueryAction::UnitConversions(conversions) => {
+                tile.results = conversions
+                    .into_iter()
+                    .map(|conversion| conversion.to_app())
+                    .collect();
+                return single_item_resize_task(id);
+            }
+            QueryAction::Calculation(res) => {
+                tile.results.push(App {
+                    ranking: 0,
+                    open_command: AppCommand::Function(Function::Calculate(res.clone())),
+                    desc: RUSTCAST_DESC_NAME.to_string(),
+                    icons: None,
+                    display_name: res.eval().map(|x| x.to_string()).unwrap_or_default(),
+                    search_name: "".to_string(),
+                });
+                return single_item_resize_task(id);
+            }
+            QueryAction::GoogleSearch(query) => {
+                tile.results = vec![App {
+                    ranking: 0,
+                    open_command: AppCommand::Function(Function::GoogleSearch(query.clone())),
+                    icons: None,
+                    desc: "Web Search".to_string(),
+                    display_name: format!("Search for: {}", query),
+                    search_name: String::new(),
+                }];
+                return single_item_resize_task(id);
+            }
+            QueryAction::SwitchToPage(_)
+            | QueryAction::ShowFavourites
+            | QueryAction::ShellCommand(_) => unreachable!(),
+        }
     }
+
     task
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::tile::{AppIndex, Hotkeys};
+    use crate::config::{Buffer, Theme};
+    use crate::platform::macos::launching::Shortcut;
+
+    fn test_app(search_name: &str, command: AppCommand, ranking: i32) -> App {
+        App {
+            ranking,
+            open_command: command,
+            desc: "Application".to_string(),
+            icons: None,
+            display_name: search_name.to_string(),
+            search_name: search_name.to_string(),
+        }
+    }
+
+    fn test_tile(results: Vec<App>) -> Tile {
+        Tile {
+            theme: iced::Theme::Dark,
+            focus_id: 0,
+            query: String::new(),
+            current_mode: "Default".to_string(),
+            update_available: false,
+            ranking: HashMap::new(),
+            query_lc: String::new(),
+            results,
+            options: AppIndex::from_apps(vec![
+                test_app(
+                    "openable",
+                    AppCommand::Function(Function::OpenApp(
+                        "/Applications/Openable.app".to_string(),
+                    )),
+                    0,
+                ),
+                test_app(
+                    "message",
+                    AppCommand::Message(Message::SwitchToPage(Page::Settings)),
+                    0,
+                ),
+                test_app("display", AppCommand::Display, 0),
+            ]),
+            emoji_apps: AppIndex::empty(),
+            visible: true,
+            focused: true,
+            frontmost: None,
+            config: Config {
+                buffer_rules: Buffer {
+                    clear_on_hide: true,
+                    clear_on_enter: true,
+                },
+                theme: Theme::default(),
+                ..Config::default()
+            },
+            hotkeys: Hotkeys {
+                toggle: Shortcut::parse("alt+space").unwrap(),
+                clipboard_hotkey: Shortcut::parse("cmd+shift+c").unwrap(),
+                shells: HashMap::new(),
+            },
+            clipboard_content: Vec::new(),
+            tray_icon: None,
+            sender: None,
+            page: Page::Main,
+            height: DEFAULT_WINDOW_HEIGHT,
+            file_search_sender: None,
+            debouncer: crate::debounce::Debouncer::new(10),
+        }
+    }
+
+    #[test]
+    fn extract_target_reads_target_query_parameter() {
+        let url = Url::parse("rustcast://open?target=safari").unwrap();
+        assert_eq!(extract_target(&url), Some("safari".to_string()));
+    }
+
+    #[test]
+    fn classify_query_action_matches_special_cases() {
+        assert_eq!(
+            classify_query_action(&Page::Main, "example.com", "example.com"),
+            Some(QueryAction::OpenWebsite("example.com".to_string()))
+        );
+        assert!(matches!(
+            classify_query_action(&Page::Main, "2 + 2", "2 + 2"),
+            Some(QueryAction::Calculation(_))
+        ));
+        assert!(matches!(
+            classify_query_action(&Page::Main, "12 cm to in", "12 cm to in"),
+            Some(QueryAction::UnitConversions(_))
+        ));
+        assert_eq!(
+            classify_query_action(&Page::Main, "find me something", "find me something"),
+            Some(QueryAction::GoogleSearch("find me something".to_string()))
+        );
+        assert_eq!(
+            classify_query_action(&Page::Main, ">echo test", ">echo test"),
+            Some(QueryAction::ShellCommand("echo test".to_string()))
+        );
+        assert_eq!(
+            classify_query_action(&Page::Main, "fav", "fav"),
+            Some(QueryAction::ShowFavourites)
+        );
+        assert_eq!(
+            classify_query_action(&Page::Settings, "main", "main"),
+            Some(QueryAction::SwitchToPage(Page::Main))
+        );
+    }
+
+    #[test]
+    fn message_for_open_command_maps_variants_without_side_effects() {
+        assert!(matches!(
+            message_for_open_command(&AppCommand::Function(Function::QuitAllApps)),
+            Message::RunFunction(Function::QuitAllApps)
+        ));
+        assert!(matches!(
+            message_for_open_command(&AppCommand::Message(Message::ReloadConfig)),
+            Message::ReloadConfig
+        ));
+        assert!(matches!(
+            message_for_open_command(&AppCommand::Display),
+            Message::ReturnFocus
+        ));
+    }
+
+    #[test]
+    fn open_result_updates_ranking_only_for_actionable_results() {
+        let mut tile = test_tile(vec![
+            test_app(
+                "openable",
+                AppCommand::Function(Function::OpenApp("/Applications/Openable.app".to_string())),
+                0,
+            ),
+            test_app(
+                "message",
+                AppCommand::Message(Message::SwitchToPage(Page::Settings)),
+                0,
+            ),
+            test_app("display", AppCommand::Display, 0),
+        ]);
+
+        let _ = open_result(&mut tile, 0);
+        let _ = open_result(&mut tile, 1);
+        let _ = open_result(&mut tile, 2);
+
+        assert_eq!(tile.options.get_rankings().get("openable"), Some(&1));
+        assert_eq!(tile.options.get_rankings().get("message"), Some(&1));
+        assert_eq!(tile.options.get_rankings().get("display"), None);
+    }
 }

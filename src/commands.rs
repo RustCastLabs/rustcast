@@ -142,3 +142,29 @@ pub fn path_to_app(absolute_path: &str, home_dir: &str) -> Option<App> {
         search_name: filename.to_lowercase(),
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn path_to_app_rewrites_home_prefix_and_uses_filename() {
+        let app = path_to_app("/Users/test/Documents/report.pdf", "/Users/test").unwrap();
+
+        assert_eq!(app.display_name, "report.pdf");
+        assert_eq!(app.search_name, "report.pdf");
+        assert_eq!(app.desc, "~/Documents/report.pdf");
+        assert!(matches!(
+            app.open_command,
+            AppCommand::Function(Function::OpenApp(path))
+                if path == "/Users/test/Documents/report.pdf"
+        ));
+    }
+
+    #[test]
+    fn path_to_app_rejects_empty_and_dotfile_paths() {
+        assert!(path_to_app("", "/Users/test").is_none());
+        assert!(path_to_app("/Users/test/.env", "/Users/test").is_none());
+        assert!(path_to_app("   ", "/Users/test").is_none());
+    }
+}

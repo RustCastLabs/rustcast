@@ -98,6 +98,7 @@ impl Expr {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Result<Expr, String> {
         let mut p = Parser::new(s);
         let expr = p.parse_expr()?;
@@ -384,5 +385,47 @@ impl<'a> Parser<'a> {
             }
             _ => Err(format!("Unexpected token: {:?}", self.cur)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn eval(input: &str) -> f64 {
+        Expr::from_str(input).unwrap().eval().unwrap()
+    }
+
+    fn approx_eq(left: f64, right: f64) {
+        assert!((left - right).abs() < 1e-9, "{left} != {right}");
+    }
+
+    #[test]
+    fn calculator_respects_precedence_and_parentheses() {
+        approx_eq(eval("2 + 3 * 4"), 14.0);
+        approx_eq(eval("2^(1+2)"), 8.0);
+        approx_eq(eval("-(3 + 4)"), -7.0);
+    }
+
+    #[test]
+    fn calculator_supports_logs_and_unary_ops() {
+        approx_eq(eval("ln(2.718281828459045)"), 1.0);
+        approx_eq(eval("log(1000)"), 3.0);
+        approx_eq(eval("log(2, 8)"), 3.0);
+        approx_eq(eval("+5"), 5.0);
+    }
+
+    #[test]
+    fn calculator_handles_scientific_notation() {
+        approx_eq(eval("1e2 + 5"), 105.0);
+    }
+
+    #[test]
+    fn calculator_rejects_invalid_input() {
+        assert!(Expr::from_str("2 +").is_err());
+        assert!(Expr::from_str("foo(1)").is_ok());
+        assert!(Expr::from_str("foo(1)").unwrap().eval().is_none());
+        assert!(Expr::from_str("log(1, 2, 3)").unwrap().eval().is_none());
+        assert!(Expr::from_str(")").is_err());
     }
 }
