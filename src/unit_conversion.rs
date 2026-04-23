@@ -449,7 +449,11 @@ mod tests {
     #[test]
     fn convert_query_returns_all_units_for_category_without_target() {
         let results = convert_query("1 m").unwrap();
-        assert!(results.iter().all(|result| result.source_unit.category == UnitCategory::Length));
+        assert!(
+            results
+                .iter()
+                .all(|result| result.source_unit.category == UnitCategory::Length)
+        );
         assert!(results.iter().any(|result| result.target_unit.name == "km"));
         assert!(results.iter().any(|result| result.target_unit.name == "ft"));
     }

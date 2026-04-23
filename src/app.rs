@@ -290,7 +290,10 @@ mod tests {
         modes.insert("default".to_string(), "echo default".to_string());
 
         let apps = modes.to_apps();
-        let default_count = apps.iter().filter(|app| app.search_name == "default").count();
+        let default_count = apps
+            .iter()
+            .filter(|app| app.search_name == "default")
+            .count();
 
         assert_eq!(default_count, 1);
     }

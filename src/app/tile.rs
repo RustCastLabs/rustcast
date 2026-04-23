@@ -701,8 +701,7 @@ mod tests {
         receiver.borrow_and_update();
         let (mut sender, mut out_receiver) = iced::futures::channel::mpsc::channel(16);
 
-        let canceled =
-            read_mdfind_results(reader, "/Users/test", &mut receiver, &mut sender).await;
+        let canceled = read_mdfind_results(reader, "/Users/test", &mut receiver, &mut sender).await;
         assert!(!canceled);
 
         drop(sender);
@@ -715,10 +714,7 @@ mod tests {
         }
 
         assert_eq!(batches.len(), 2);
-        assert_eq!(
-            batches[0].len() as u32,
-            crate::app::FILE_SEARCH_BATCH_SIZE
-        );
+        assert_eq!(batches[0].len() as u32, crate::app::FILE_SEARCH_BATCH_SIZE);
         assert_eq!(batches[1].len(), 2);
         assert_eq!(batches[0][0].desc, "~/Documents/file-0.txt");
     }

@@ -1253,7 +1253,9 @@ mod tests {
             options: AppIndex::from_apps(vec![
                 test_app(
                     "openable",
-                    AppCommand::Function(Function::OpenApp("/Applications/Openable.app".to_string())),
+                    AppCommand::Function(Function::OpenApp(
+                        "/Applications/Openable.app".to_string(),
+                    )),
                     0,
                 ),
                 test_app(

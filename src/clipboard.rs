@@ -75,9 +75,8 @@ mod tests {
 
     #[test]
     fn clipboard_to_app_truncates_and_uses_first_line_for_display() {
-        let item = ClipBoardContentType::Text(
-            "abcdefghijklmnopqrstuvwxyz\nsecond line".to_string(),
-        );
+        let item =
+            ClipBoardContentType::Text("abcdefghijklmnopqrstuvwxyz\nsecond line".to_string());
 
         let app = item.to_app();
 

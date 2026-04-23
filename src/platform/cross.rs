@@ -51,44 +51,47 @@ fn discover_apps(dir: impl AsRef<Path>, store_icons: bool) -> Vec<App> {
         }
     };
 
-    entries.into_par_iter().filter_map(move |x| {
-        let file_type = match x.file_type() {
-            Ok(file_type) => file_type,
-            Err(error) => {
-                error!("Unable to map entries: {}", error);
+    entries
+        .into_par_iter()
+        .filter_map(move |x| {
+            let file_type = match x.file_type() {
+                Ok(file_type) => file_type,
+                Err(error) => {
+                    error!("Unable to map entries: {}", error);
+                    return None;
+                }
+            };
+            if !file_type.is_dir() {
                 return None;
             }
-        };
-        if !file_type.is_dir() {
-            return None;
-        }
 
-        let file_name_os = x.file_name();
-        let file_name = file_name_os.to_string_lossy().to_string();
+            let file_name_os = x.file_name();
+            let file_name = file_name_os.to_string_lossy().to_string();
 
-        if !file_name.ends_with(".app") {
-            return None;
-        }
+            if !file_name.ends_with(".app") {
+                return None;
+            }
 
-        let path = x.path();
-        let path_str = path.to_string_lossy().to_string();
+            let path = x.path();
+            let path_str = path.to_string_lossy().to_string();
 
-        let icons = if store_icons {
-            find_bundle_icon_path(&path).and_then(|icon_path| handle_from_icns(&icon_path))
-        } else {
-            None
-        };
+            let icons = if store_icons {
+                find_bundle_icon_path(&path).and_then(|icon_path| handle_from_icns(&icon_path))
+            } else {
+                None
+            };
 
-        let name = file_name.strip_suffix(".app").unwrap().to_string();
-        Some(App {
-            ranking: 0,
-            open_command: AppCommand::Function(Function::OpenApp(path_str)),
-            desc: "Application".to_string(),
-            icons,
-            search_name: name.to_lowercase(),
-            display_name: name,
+            let name = file_name.strip_suffix(".app").unwrap().to_string();
+            Some(App {
+                ranking: 0,
+                open_command: AppCommand::Function(Function::OpenApp(path_str)),
+                desc: "Application".to_string(),
+                icons,
+                search_name: name.to_lowercase(),
+                display_name: name,
+            })
         })
-    }).collect()
+        .collect()
 }
 
 fn plist_icon_name(contents: &str) -> Option<String> {

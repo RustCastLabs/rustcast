@@ -187,7 +187,9 @@ fn is_in_user_app_directory_with<'a>(
     path: &Path,
     directories: impl IntoIterator<Item = &'a Path>,
 ) -> bool {
-    directories.into_iter().any(|directory| path.starts_with(directory))
+    directories
+        .into_iter()
+        .any(|directory| path.starts_with(directory))
 }
 
 fn should_include_app(path: &Path, metadata: &AppBundleMetadata) -> bool {
@@ -203,7 +205,8 @@ fn should_include_app_with<'a>(
         return false;
     }
 
-    if !is_in_user_app_directory_with(path, directories) && metadata.application_category.is_none() {
+    if !is_in_user_app_directory_with(path, directories) && metadata.application_category.is_none()
+    {
         return false;
     }
 
@@ -217,7 +220,9 @@ fn select_app_name(path: &Path, metadata: &AppBundleMetadata) -> Option<String> 
         .or_else(|| metadata.bundle_name.clone())
 }
 
-fn extract_bundle_metadata(info: &NSDictionary<NSString, objc2::runtime::AnyObject>) -> AppBundleMetadata {
+fn extract_bundle_metadata(
+    info: &NSDictionary<NSString, objc2::runtime::AnyObject>,
+) -> AppBundleMetadata {
     let get_string = |key: &NSString| -> Option<String> {
         info.objectForKey(key)?
             .downcast::<NSString>()
@@ -421,7 +426,10 @@ mod tests {
 
     #[test]
     fn trusted_directory_detection_uses_prefixes() {
-        let dirs = [Path::new("/Applications"), Path::new("/Users/test/Applications")];
+        let dirs = [
+            Path::new("/Applications"),
+            Path::new("/Users/test/Applications"),
+        ];
 
         assert!(is_in_user_app_directory_with(
             Path::new("/Applications/Safari.app"),
@@ -445,7 +453,9 @@ mod tests {
         assert!(is_helper_location(Path::new(
             "/Applications/Foo.app/Contents/XPCServices/Bar.app"
         )));
-        assert!(!is_nested_inside_another_app(Path::new("/Applications/Foo.app")));
+        assert!(!is_nested_inside_another_app(Path::new(
+            "/Applications/Foo.app"
+        )));
     }
 
     #[test]
