@@ -238,3 +238,60 @@ impl DebouncePolicy for Page {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Config;
+
+    #[test]
+    fn page_display_labels_are_stable() {
+        assert_eq!(Page::Main.to_string(), "App search");
+        assert_eq!(Page::FileSearch.to_string(), "File search");
+        assert_eq!(Page::ClipboardHistory.to_string(), "Clipboard history");
+        assert_eq!(Page::EmojiSearch.to_string(), "Emoji search");
+        assert_eq!(Page::Settings.to_string(), "Settings");
+    }
+
+    #[test]
+    fn page_debounce_policy_matches_expected_pages() {
+        let config = Config {
+            debounce_delay: 123,
+            ..Config::default()
+        };
+
+        assert_eq!(Page::Main.debounce_delay(&config), None);
+        assert_eq!(Page::ClipboardHistory.debounce_delay(&config), None);
+        assert_eq!(Page::Settings.debounce_delay(&config), None);
+        assert_eq!(
+            Page::FileSearch.debounce_delay(&config),
+            Some(Duration::from_millis(123))
+        );
+        assert_eq!(
+            Page::EmojiSearch.debounce_delay(&config),
+            Some(Duration::from_millis(123))
+        );
+    }
+
+    #[test]
+    fn mode_to_apps_adds_default_when_missing() {
+        let mut modes = HashMap::new();
+        modes.insert("work".to_string(), "echo work".to_string());
+
+        let apps = modes.to_apps();
+
+        assert!(apps.iter().any(|app| app.search_name == "work"));
+        assert!(apps.iter().any(|app| app.search_name == "default"));
+    }
+
+    #[test]
+    fn mode_to_apps_does_not_duplicate_default() {
+        let mut modes = HashMap::new();
+        modes.insert("default".to_string(), "echo default".to_string());
+
+        let apps = modes.to_apps();
+        let default_count = apps.iter().filter(|app| app.search_name == "default").count();
+
+        assert_eq!(default_count, 1);
+    }
+}

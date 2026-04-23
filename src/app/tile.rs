@@ -27,7 +27,7 @@ use objc2::rc::Retained;
 use objc2_app_kit::NSRunningApplication;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::slice::ParallelSliceMut;
-use tokio::io::AsyncBufReadExt;
+use tokio::io::{AsyncBufReadExt, AsyncRead};
 use tray_icon::TrayIcon;
 
 use std::collections::HashMap;
@@ -137,6 +137,21 @@ impl AppIndex {
 
         AppIndex { by_name: hmap }
     }
+}
+
+fn build_mdfind_args(query: &str, dirs: &[String], home_dir: &str) -> Option<Vec<String>> {
+    assert!(query.len() < 1024, "Query too long.");
+    if query.len() < 2 {
+        return None;
+    }
+
+    let mut args = vec!["-name".to_string(), query.to_string()];
+    for dir in dirs {
+        args.push("-onlyin".to_string());
+        args.push(dir.replace("~", home_dir));
+    }
+
+    Some(args)
 }
 
 /// This is the base window, and its a "Tile"
@@ -372,8 +387,8 @@ fn handle_clipboard_history() -> impl futures::Stream<Item = Message> {
 ///
 /// Returns when stdout reaches EOF, the receiver signals a new query, or
 /// max results are reached. Caller is responsible for process lifetime.
-async fn read_mdfind_results(
-    stdout: tokio::process::ChildStdout,
+async fn read_mdfind_results<R: AsyncRead + Unpin>(
+    stdout: R,
     home_dir: &str,
     receiver: &mut tokio::sync::watch::Receiver<(String, Vec<String>)>,
     output: &mut iced::futures::channel::mpsc::Sender<Message>,
@@ -504,23 +519,11 @@ fn handle_file_search() -> impl futures::Stream<Item = Message> {
             child = None;
 
             let (query, dirs) = receiver.borrow_and_update().clone();
-            assert!(query.len() < 1024, "Query too long.");
 
-            if query.len() < 2 {
+            let Some(args) = build_mdfind_args(&query, &dirs, &home_dir) else {
                 output.send(Message::FileSearchClear).await.ok();
                 continue;
-            }
-
-            // The query is passed as a -name argument to mdfind. mdfind interprets
-            // this as a substring match on filenames — not as a glob or shell expression.
-            // Passed via args (not shell), so no shell injection risk.
-            // When dirs is empty, omit -onlyin so mdfind searches system-wide.
-            let mut args: Vec<String> = vec!["-name".to_string(), query.clone()];
-            for dir in &dirs {
-                let expanded = dir.replace("~", &home_dir);
-                args.push("-onlyin".to_string());
-                args.push(expanded);
-            }
+            };
 
             let mut command = tokio::process::Command::new("mdfind");
             command.args(&args);
@@ -569,6 +572,180 @@ fn handle_file_search() -> impl futures::Stream<Item = Message> {
             proc.wait().await.ok();
         }
     })
+}
+
+#[cfg(test)]
+#[allow(clippy::items_after_test_module)]
+mod tests {
+    use super::*;
+    use crate::app::apps::{App, AppCommand};
+    use crate::commands::Function;
+    use iced::futures::StreamExt;
+    use tokio::io::{AsyncWriteExt, duplex};
+
+    fn test_app(name: &str, ranking: i32) -> App {
+        App {
+            ranking,
+            open_command: AppCommand::Function(Function::OpenApp(format!(
+                "/Applications/{name}.app"
+            ))),
+            desc: "Application".to_string(),
+            icons: None,
+            display_name: name.to_string(),
+            search_name: name.to_lowercase(),
+        }
+    }
+
+    #[test]
+    fn app_index_search_prefix_matches_prefix_and_word_boundaries() {
+        let index = AppIndex::from_apps(vec![
+            test_app("Safari", 0),
+            App {
+                search_name: "visual studio code".to_string(),
+                display_name: "Visual Studio Code".to_string(),
+                ..test_app("Visual Studio Code", 0)
+            },
+            App {
+                search_name: "signal-desktop".to_string(),
+                display_name: "Signal Desktop".to_string(),
+                ..test_app("Signal Desktop", 0)
+            },
+        ]);
+
+        let prefix_results: Vec<_> = index
+            .search_prefix("sa")
+            .map(|app| app.display_name.clone())
+            .collect();
+        let spaced_results: Vec<_> = index
+            .search_prefix("studio")
+            .map(|app| app.display_name.clone())
+            .collect();
+        let hyphen_results: Vec<_> = index
+            .search_prefix("desktop")
+            .map(|app| app.display_name.clone())
+            .collect();
+
+        assert_eq!(prefix_results, vec!["Safari".to_string()]);
+        assert_eq!(spaced_results, vec!["Visual Studio Code".to_string()]);
+        assert_eq!(hyphen_results, vec!["Signal Desktop".to_string()]);
+    }
+
+    #[test]
+    fn app_index_ranking_helpers_work() {
+        let mut index = AppIndex::from_apps(vec![
+            test_app("Safari", 1),
+            test_app("Notes", -1),
+            test_app("Arc", 3),
+            test_app("Alfred", 3),
+        ]);
+
+        index.update_ranking("safari");
+        index.set_ranking("notes", -1);
+
+        assert_eq!(index.get_rankings().get("safari"), Some(&2));
+        assert_eq!(index.get_rankings().get("notes"), None);
+
+        let top_ranked = index.top_ranked(2);
+        assert_eq!(top_ranked.len(), 2);
+        assert_eq!(top_ranked[0].display_name, "Alfred");
+        assert_eq!(top_ranked[1].display_name, "Arc");
+
+        let favourites = index.get_favourites();
+        assert_eq!(favourites.len(), 1);
+        assert_eq!(favourites[0].display_name, "Notes");
+    }
+
+    #[test]
+    fn build_mdfind_args_expands_home_and_omits_onlyin_for_empty_dirs() {
+        assert_eq!(
+            build_mdfind_args("ab", &[], "/Users/test").unwrap(),
+            vec!["-name".to_string(), "ab".to_string()]
+        );
+
+        assert_eq!(
+            build_mdfind_args(
+                "report",
+                &[String::from("~/Documents"), String::from("/tmp")],
+                "/Users/test"
+            )
+            .unwrap(),
+            vec![
+                "-name".to_string(),
+                "report".to_string(),
+                "-onlyin".to_string(),
+                "/Users/test/Documents".to_string(),
+                "-onlyin".to_string(),
+                "/tmp".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn build_mdfind_args_rejects_short_queries() {
+        assert!(build_mdfind_args("a", &[], "/Users/test").is_none());
+    }
+
+    #[tokio::test]
+    async fn read_mdfind_results_batches_and_limits_results() {
+        let total_lines = crate::app::FILE_SEARCH_BATCH_SIZE + 1;
+        let input = (0..=total_lines)
+            .map(|idx| format!("/Users/test/Documents/file-{idx}.txt\n"))
+            .collect::<String>();
+
+        let (mut writer, reader) = duplex(16 * 1024);
+        writer.write_all(input.as_bytes()).await.unwrap();
+        drop(writer);
+
+        let (_notify_sender, mut receiver) =
+            tokio::sync::watch::channel((String::new(), Vec::<String>::new()));
+        receiver.borrow_and_update();
+        let (mut sender, mut out_receiver) = iced::futures::channel::mpsc::channel(16);
+
+        let canceled =
+            read_mdfind_results(reader, "/Users/test", &mut receiver, &mut sender).await;
+        assert!(!canceled);
+
+        drop(sender);
+
+        let mut batches = Vec::new();
+        while let Some(message) = out_receiver.next().await {
+            if let Message::FileSearchResult(apps) = message {
+                batches.push(apps);
+            }
+        }
+
+        assert_eq!(batches.len(), 2);
+        assert_eq!(
+            batches[0].len() as u32,
+            crate::app::FILE_SEARCH_BATCH_SIZE
+        );
+        assert_eq!(batches[1].len(), 2);
+        assert_eq!(batches[0][0].desc, "~/Documents/file-0.txt");
+    }
+
+    #[tokio::test]
+    async fn read_mdfind_results_cancels_when_query_changes() {
+        let (notify_sender, mut receiver) =
+            tokio::sync::watch::channel((String::new(), Vec::<String>::new()));
+        receiver.borrow_and_update();
+
+        let (mut out_sender, _out_receiver) = iced::futures::channel::mpsc::channel(4);
+        let (writer, reader) = duplex(1024);
+
+        let task = tokio::spawn(async move {
+            read_mdfind_results(reader, "/Users/test", &mut receiver, &mut out_sender).await
+        });
+
+        // Keep the writer alive so the read loop waits on the watch channel.
+        let _writer = writer;
+
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        notify_sender
+            .send((String::from("next"), Vec::<String>::new()))
+            .unwrap();
+
+        assert!(task.await.unwrap());
+    }
 }
 
 /// Handles the rx / receiver for sending and receiving messages

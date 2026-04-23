@@ -17,7 +17,7 @@ pub enum UnitCategory {
     Temperature,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct UnitDef {
     pub name: &'static str,
     pub aliases: &'static [&'static str],
@@ -26,7 +26,7 @@ pub struct UnitDef {
     pub offset: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ConversionResult {
     pub source_value: f64,
     pub source_unit: &'static UnitDef,
@@ -413,4 +413,62 @@ fn to_base(value: f64, unit: &UnitDef) -> f64 {
 
 fn from_base(value: f64, unit: &UnitDef) -> f64 {
     value / unit.scale - unit.offset
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn approx_eq(left: f64, right: f64) {
+        assert!((left - right).abs() < 1e-9, "{left} != {right}");
+    }
+
+    #[test]
+    fn format_number_trims_trailing_zeroes() {
+        assert_eq!(format_number(12.340000), "12.34");
+        assert_eq!(format_number(7.0), "7");
+        assert_eq!(format_number(0.0000000001), "0");
+    }
+
+    #[test]
+    fn parse_number_prefix_supports_signs_and_decimals() {
+        assert_eq!(parse_number_prefix("  -12.5 kg"), Some(("-12.5", " kg")));
+        assert_eq!(parse_number_prefix("+0.75m"), Some(("+0.75", "m")));
+        assert_eq!(parse_number_prefix("kg"), None);
+    }
+
+    #[test]
+    fn convert_query_returns_specific_target_conversion() {
+        let results = convert_query("100 c to f").unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].source_unit.name, "c");
+        assert_eq!(results[0].target_unit.name, "f");
+        approx_eq(results[0].target_value, 212.0);
+    }
+
+    #[test]
+    fn convert_query_returns_all_units_for_category_without_target() {
+        let results = convert_query("1 m").unwrap();
+        assert!(results.iter().all(|result| result.source_unit.category == UnitCategory::Length));
+        assert!(results.iter().any(|result| result.target_unit.name == "km"));
+        assert!(results.iter().any(|result| result.target_unit.name == "ft"));
+    }
+
+    #[test]
+    fn convert_query_rejects_category_mismatches_and_invalid_queries() {
+        assert!(convert_query("10 kg to m").is_none());
+        assert!(convert_query("abc").is_none());
+        assert!(convert_query("10").is_none());
+    }
+
+    #[test]
+    fn conversion_base_helpers_round_trip_temperature() {
+        let celsius = find_unit("c").unwrap();
+        let kelvin = find_unit("k").unwrap();
+
+        let base = to_base(100.0, kelvin);
+        approx_eq(base, -173.15);
+        approx_eq(from_base(base, kelvin), 100.0);
+        approx_eq(from_base(to_base(0.0, celsius), celsius), 0.0);
+    }
 }

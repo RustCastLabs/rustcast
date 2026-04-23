@@ -231,3 +231,27 @@ impl ToApp for Shelly {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn config_default_values_match_expected_defaults() {
+        let config = Config::default();
+
+        assert_eq!(config.toggle_hotkey, "ALT+SPACE");
+        assert_eq!(config.clipboard_hotkey, "SUPER+SHIFT+C");
+        assert_eq!(config.search_url, "https://duckduckgo.com/search?q=%s");
+        assert_eq!(config.search_dirs, vec!["~".to_string()]);
+        assert_eq!(config.debounce_delay, 300);
+        assert_eq!(config.main_page, MainPage::Blank);
+    }
+
+    #[test]
+    fn main_page_display_labels_are_stable() {
+        assert_eq!(MainPage::Blank.to_string(), "♥️ Rustcast");
+        assert_eq!(MainPage::Favourites.to_string(), "Favourites");
+        assert_eq!(MainPage::FrequentlyUsed.to_string(), "Frequently Used");
+    }
+}

@@ -175,11 +175,73 @@ static USER_APP_DIRECTORIES: LazyLock<&'static [&'static Path]> = LazyLock::new(
     Box::leak(Box::new([items[0], items[1], home_apps]))
 });
 
-/// Checks if an app path is in a trusted user-facing application directory.
-fn is_in_user_app_directory(path: &Path) -> bool {
-    USER_APP_DIRECTORIES
-        .iter()
-        .any(|directory| path.starts_with(directory))
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct AppBundleMetadata {
+    bundle_display_name: Option<String>,
+    bundle_name: Option<String>,
+    application_category: Option<String>,
+    background_only: bool,
+}
+
+fn is_in_user_app_directory_with<'a>(
+    path: &Path,
+    directories: impl IntoIterator<Item = &'a Path>,
+) -> bool {
+    directories.into_iter().any(|directory| path.starts_with(directory))
+}
+
+fn should_include_app(path: &Path, metadata: &AppBundleMetadata) -> bool {
+    should_include_app_with(path, metadata, USER_APP_DIRECTORIES.iter().copied())
+}
+
+fn should_include_app_with<'a>(
+    path: &Path,
+    metadata: &AppBundleMetadata,
+    directories: impl IntoIterator<Item = &'a Path>,
+) -> bool {
+    if is_nested_inside_another_app(path) || is_helper_location(path) || metadata.background_only {
+        return false;
+    }
+
+    if !is_in_user_app_directory_with(path, directories) && metadata.application_category.is_none() {
+        return false;
+    }
+
+    true
+}
+
+fn select_app_name(path: &Path, metadata: &AppBundleMetadata) -> Option<String> {
+    path.file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .or_else(|| metadata.bundle_display_name.clone())
+        .or_else(|| metadata.bundle_name.clone())
+}
+
+fn extract_bundle_metadata(info: &NSDictionary<NSString, objc2::runtime::AnyObject>) -> AppBundleMetadata {
+    let get_string = |key: &NSString| -> Option<String> {
+        info.objectForKey(key)?
+            .downcast::<NSString>()
+            .ok()
+            .map(|s| s.to_string())
+    };
+
+    let is_truthy = |key: &NSString| -> bool {
+        info.objectForKey(key)
+            .map(|v| {
+                v.downcast_ref::<NSNumber>().is_some_and(|n| n.boolValue())
+                    || v.downcast_ref::<NSString>().is_some_and(|s| {
+                        s.to_string() == "1" || s.to_string().eq_ignore_ascii_case("YES")
+                    })
+            })
+            .unwrap_or(false)
+    };
+
+    AppBundleMetadata {
+        bundle_display_name: get_string(ns_string!("CFBundleDisplayName")),
+        bundle_name: get_string(ns_string!("CFBundleName")),
+        application_category: get_string(ns_string!("LSApplicationCategoryType")),
+        background_only: is_truthy(ns_string!("LSBackgroundOnly")),
+    }
 }
 
 /// Extracts application metadata from a bundle URL.
@@ -196,60 +258,14 @@ fn is_in_user_app_directory(path: &Path) -> bool {
 fn query_app(url: impl AsRef<NSURL>, store_icons: bool) -> Option<App> {
     let url = url.as_ref();
     let path = url.to_file_path()?;
-    if is_nested_inside_another_app(&path) || is_helper_location(&path) {
-        return None;
-    }
-
     let bundle = NSBundle::bundleWithURL(url)?;
     let info = bundle.infoDictionary()?;
-
-    let get_string = |key: &NSString| -> Option<String> {
-        info.objectForKey(key)?
-            .downcast::<NSString>()
-            .ok()
-            .map(|s| s.to_string())
-    };
-
-    let is_truthy = |key: &NSString| -> bool {
-        info.objectForKey(key)
-            .map(|v| {
-                // Check for boolean true or string "1"/"YES"
-                v.downcast_ref::<NSNumber>().is_some_and(|n| n.boolValue())
-                    || v.downcast_ref::<NSString>().is_some_and(|s| {
-                        s.to_string() == "1" || s.to_string().eq_ignore_ascii_case("YES")
-                    })
-            })
-            .unwrap_or(false)
-    };
-
-    // Filter out background-only apps (daemons, agents, internal system apps)
-    if is_truthy(ns_string!("LSBackgroundOnly")) {
+    let metadata = extract_bundle_metadata(&info);
+    if !should_include_app(&path, &metadata) {
         return None;
     }
 
-    // For apps outside trusted directories, require LSApplicationCategoryType to be set.
-    // This filters out internal system apps (SCIM, ShortcutsActions, etc.) while keeping
-    // user-facing apps like Finder that happen to live in /System/Library/CoreServices/.
-    if !is_in_user_app_directory(&path)
-        && get_string(ns_string!("LSApplicationCategoryType")).is_none()
-    {
-        return None;
-    }
-
-    let plist_name = get_string(ns_string!("CFBundleDisplayName"))
-        .or_else(|| get_string(ns_string!("CFBundleName")));
-
-    let file_path_name = path
-        .file_stem()
-        .map(|stem| stem.to_string_lossy().into_owned());
-
-    let name = if let Some(name) = file_path_name {
-        name
-    } else if let Some(name) = plist_name {
-        name
-    } else {
-        return None;
-    };
+    let name = select_app_name(&path, &metadata)?;
 
     let icon = icon_of_path_ns(path.to_str().unwrap_or(&name)).unwrap_or(vec![]);
     let icons = if store_icons {
@@ -397,4 +413,96 @@ pub fn icon_of_path_ns(path: &str) -> Option<Vec<u8>> {
 
         Some(png_data.to_vec())
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trusted_directory_detection_uses_prefixes() {
+        let dirs = [Path::new("/Applications"), Path::new("/Users/test/Applications")];
+
+        assert!(is_in_user_app_directory_with(
+            Path::new("/Applications/Safari.app"),
+            dirs.iter().copied()
+        ));
+        assert!(is_in_user_app_directory_with(
+            Path::new("/Users/test/Applications/Arc.app"),
+            dirs.iter().copied()
+        ));
+        assert!(!is_in_user_app_directory_with(
+            Path::new("/System/Library/CoreServices/Finder.app"),
+            dirs.iter().copied()
+        ));
+    }
+
+    #[test]
+    fn app_path_filters_nested_and_helper_locations() {
+        assert!(is_nested_inside_another_app(Path::new(
+            "/Applications/Foo.app/Contents/Helpers/Bar.app"
+        )));
+        assert!(is_helper_location(Path::new(
+            "/Applications/Foo.app/Contents/XPCServices/Bar.app"
+        )));
+        assert!(!is_nested_inside_another_app(Path::new("/Applications/Foo.app")));
+    }
+
+    #[test]
+    fn include_rules_filter_background_and_uncategorized_internal_apps() {
+        let trusted_dirs = [Path::new("/Applications")];
+        let background = AppBundleMetadata {
+            background_only: true,
+            ..AppBundleMetadata::default()
+        };
+        let internal = AppBundleMetadata::default();
+        let categorized = AppBundleMetadata {
+            application_category: Some("public.app-category.productivity".to_string()),
+            ..AppBundleMetadata::default()
+        };
+
+        assert!(!should_include_app_with(
+            Path::new("/Applications/Foo.app"),
+            &background,
+            trusted_dirs.iter().copied()
+        ));
+        assert!(!should_include_app_with(
+            Path::new("/System/Library/CoreServices/Finder.app"),
+            &internal,
+            trusted_dirs.iter().copied()
+        ));
+        assert!(should_include_app_with(
+            Path::new("/System/Library/CoreServices/Finder.app"),
+            &categorized,
+            trusted_dirs.iter().copied()
+        ));
+    }
+
+    #[test]
+    fn app_name_selection_prefers_path_stem_then_bundle_fields() {
+        let metadata = AppBundleMetadata {
+            bundle_display_name: Some("Display Name".to_string()),
+            bundle_name: Some("Bundle Name".to_string()),
+            ..AppBundleMetadata::default()
+        };
+
+        assert_eq!(
+            select_app_name(Path::new("/Applications/Safari.app"), &metadata),
+            Some("Safari".to_string())
+        );
+        assert_eq!(
+            select_app_name(Path::new(""), &metadata),
+            Some("Display Name".to_string())
+        );
+        assert_eq!(
+            select_app_name(
+                Path::new(""),
+                &AppBundleMetadata {
+                    bundle_name: Some("Bundle Name".to_string()),
+                    ..AppBundleMetadata::default()
+                }
+            ),
+            Some("Bundle Name".to_string())
+        );
+    }
 }
