@@ -31,6 +31,8 @@ use crate::app::menubar::menu_builder;
 use crate::app::menubar::menu_icon;
 use crate::app::tile::AppIndex;
 use crate::app::{Message, Page, tile::Tile};
+use crate::autoupdate::download_latest_app;
+use crate::autoupdate::relaunch_app;
 use crate::calculator::Expr;
 use crate::commands::Function;
 use crate::config::Config;
@@ -96,6 +98,13 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
 
         Message::UpdateAvailable => {
             tile.update_available = true;
+
+            if tile.config.auto_update {
+                thread::spawn(|| {
+                    download_latest_app().ok();
+                    relaunch_app();
+                });
+            }
             Task::done(Message::ReloadConfig)
         }
 
@@ -795,6 +804,9 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                 SetConfigFields::DebounceDelay(delay) => final_config.debounce_delay = delay,
                 SetConfigFields::HapticFeedback(haptic_feedback) => {
                     final_config.haptic_feedback = haptic_feedback
+                }
+                SetConfigFields::SetAutoUpdate(au) => {
+                    final_config.auto_update = au;
                 }
                 SetConfigFields::ShowMenubarIcon(show) => final_config.show_trayicon = show,
                 SetConfigFields::SetThemeFields(SetConfigThemeFields::Font(fnt)) => {

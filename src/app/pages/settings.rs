@@ -130,6 +130,19 @@ pub fn settings_page(config: Config) -> Element<'static, Message> {
     ]);
 
     let theme_clone = theme.clone();
+    let auto_update = settings_item_row([
+        settings_hint_text(theme.clone(), "Auto update"),
+        checkbox(config.clone().auto_update)
+            .style(move |_, _| settings_checkbox_style(&theme_clone))
+            .on_toggle(move |input| Message::SetConfig(SetConfigFields::SetAutoUpdate(input)))
+            .into(),
+        notice_item(
+            theme.clone(),
+            "If rustcast should automatically update itself",
+        ),
+    ]);
+
+    let theme_clone = theme.clone();
     let haptic = Row::from_iter([
         settings_hint_text(theme.clone(), "Haptic feedback"),
         checkbox(config.clone().haptic_feedback)
@@ -422,6 +435,7 @@ pub fn settings_page(config: Config) -> Element<'static, Message> {
         search.into(),
         debounce.into(),
         start_at_login.into(),
+        auto_update.into(),
         haptic.into(),
         tray_icon.into(),
         clipboard_history.into(),
