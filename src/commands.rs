@@ -19,6 +19,7 @@ use crate::{
 pub enum Function {
     OpenApp(String),
     QuitApp(String),
+    OpenRawUrl(String),
     QuitAllApps,
     RunShellCommand(String),
     OpenWebsite(String),
@@ -39,6 +40,19 @@ impl Function {
                     NSWorkspace::new().openURL(&NSURL::fileURLWithPath(
                         &objc2_foundation::NSString::from_str(&path),
                     ));
+                });
+            }
+
+            Function::OpenRawUrl(url) => {
+                let url = url.to_owned();
+                thread::spawn(move || {
+                    NSWorkspace::new().openURL(
+                        &NSURL::URLWithString_relativeToURL(
+                            &objc2_foundation::NSString::from_str(&url),
+                            None,
+                        )
+                        .unwrap(),
+                    );
                 });
             }
             Function::RunShellCommand(command) => {

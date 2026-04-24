@@ -36,6 +36,7 @@ use crate::commands::Function;
 use crate::config::Config;
 use crate::config::MainPage;
 use crate::debounce::DebouncePolicy;
+use crate::platform::macos::events::Event;
 use crate::platform::macos::launching::Shortcut;
 use crate::platform::macos::launching::global_handler;
 use crate::platform::macos::{start_at_login, stop_at_login};
@@ -69,6 +70,11 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             } else {
                 Task::none()
             }
+        }
+
+        Message::UpdateEvents => {
+            tile.events = Event::get_events(tile.config.event_duration);
+            Task::none()
         }
 
         Message::UriReceived(uri) => {
@@ -706,6 +712,15 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                 SetConfigFields::Modes(Editable::Create((key, value))) => {
                     final_config.modes.insert(key, value);
                 }
+                SetConfigFields::SetEventDuration(duration) => {
+                    if duration.trim().is_empty() {
+                        final_config.event_duration = 0;
+                    } else if let Ok(duration) = duration.parse::<u32>() {
+                        final_config.event_duration = duration;
+                    }
+
+                    tile.events = Event::get_events(final_config.event_duration);
+                }
                 SetConfigFields::Modes(Editable::Delete((key, _))) => {
                     final_config.modes.remove(&key);
                 }
@@ -976,6 +991,7 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
     if tile.page == Page::Main && tile.query_lc.is_empty() {
         tile.results = match tile.config.main_page {
             MainPage::FrequentlyUsed => tile.frequent_results(),
+            MainPage::Events => tile.events.iter().map(|x| x.to_app()).collect(),
             MainPage::Blank => vec![],
             MainPage::Favourites => tile.options.get_favourites(),
         };
