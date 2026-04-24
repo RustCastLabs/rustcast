@@ -1132,7 +1132,7 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
             .into_iter()
             .map(|conversion| conversion.to_app())
             .collect();
-        return single_item_resize_task(id);
+        return resize_task(id, tile.results.len() as u32);
     } else if let Ok(res) = Expr::from_str(&tile.query) {
         tile.results.push(App {
             ranking: 0,
