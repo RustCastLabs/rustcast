@@ -59,6 +59,16 @@ impl PartialEq for App {
 }
 
 impl App {
+    pub fn new(name: String, icon: Option<Handle>, desc: String, command: AppCommand) -> Self {
+        Self {
+            ranking: 0,
+            open_command: command,
+            icons: icon,
+            search_name: name.to_lowercase(),
+            display_name: name,
+            desc,
+        }
+    }
     /// A vec of all the emojis as App structs
     pub fn emoji_apps() -> Vec<App> {
         emojis::iter()

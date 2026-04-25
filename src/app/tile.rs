@@ -8,6 +8,7 @@ use crate::clipboard::ClipBoardContentType;
 use crate::config::{Config, Shelly};
 use crate::debounce::Debouncer;
 use crate::platform::default_app_paths;
+use crate::platform::macos::events::Event;
 use crate::platform::macos::launching::Shortcut;
 
 use arboard::Clipboard;
@@ -173,6 +174,7 @@ pub struct Tile {
     emoji_apps: AppIndex,
     visible: bool,
     focused: bool,
+    pub events: Vec<Event>,
     frontmost: Option<Retained<NSRunningApplication>>,
     pub config: Config,
     hotkeys: Hotkeys,
@@ -233,6 +235,7 @@ impl Tile {
             keyboard,
             Subscription::run(crate::platform::macos::urlscheme::url_stream),
             Subscription::run(handle_recipient),
+            Subscription::run(reload_events),
             Subscription::run(handle_version_and_rankings),
             Subscription::run(handle_clipboard_history),
             Subscription::run(handle_file_search),
@@ -591,6 +594,15 @@ fn handle_recipient() -> impl futures::Stream<Item = Message> {
                 abcd.await;
             }
             tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    })
+}
+
+fn reload_events() -> impl futures::Stream<Item = Message> {
+    stream::channel(100, async |mut output| {
+        loop {
+            output.send(Message::UpdateEvents).await.ok();
+            tokio::time::sleep(Duration::from_mins(2)).await;
         }
     })
 }

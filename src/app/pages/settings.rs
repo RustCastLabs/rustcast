@@ -175,11 +175,19 @@ pub fn settings_page(config: Config) -> Element<'static, Message> {
             })
             .into(),
             radio(
-                "Frequently Used",
+                "Frequents",
                 MainPage::FrequentlyUsed,
                 Some(config.main_page),
                 |page| Message::SetConfig(SetConfigFields::SetPage(page)),
             )
+            .style({
+                let theme_clone = theme_clone.clone();
+                move |_, _| settings_radio_button_style(&theme_clone.clone())
+            })
+            .into(),
+            radio("Events", MainPage::Events, Some(config.main_page), |page| {
+                Message::SetConfig(SetConfigFields::SetPage(page))
+            })
             .style({
                 let theme_clone = theme_clone.clone();
                 move |_, _| settings_radio_button_style(&theme_clone.clone())
@@ -275,6 +283,23 @@ pub fn settings_page(config: Config) -> Element<'static, Message> {
         .style(move |_, _| settings_text_input_item_style(&theme_clone))
         .into(),
         notice_item(theme.clone(), "What font rustcast should use"),
+    ]);
+
+    let theme_clone = theme.clone();
+    let event_duration = settings_item_column([
+        settings_hint_text(theme.clone(), "Set Event duration"),
+        text_input("Event duration", &config.event_duration.to_string())
+            .on_input(move |input: String| {
+                Message::SetConfig(SetConfigFields::SetEventDuration(input))
+            })
+            .on_submit(Message::WriteConfig(false))
+            .width(Length::Fill)
+            .style(move |_, _| settings_text_input_item_style(&theme_clone))
+            .into(),
+        notice_item(
+            theme.clone(),
+            "How many minutes from now the events should be displayed",
+        ),
     ]);
 
     let theme_clone = theme.clone();
@@ -431,6 +456,7 @@ pub fn settings_page(config: Config) -> Element<'static, Message> {
         clear_on_enter.into(),
         show_icons.into(),
         font_family.into(),
+        event_duration.into(),
         text_clr.into(),
         bg_clr.into(),
         settings_hint_text(theme.clone(), "Aliases"),

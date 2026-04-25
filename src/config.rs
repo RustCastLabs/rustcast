@@ -20,6 +20,7 @@ pub struct Config {
     pub toggle_hotkey: String,
     pub clipboard_hotkey: String,
     pub buffer_rules: Buffer,
+    pub event_duration: u32,
     pub main_page: MainPage,
     pub start_at_login: bool,
     pub theme: Theme,
@@ -45,6 +46,7 @@ impl Default for Config {
             buffer_rules: Buffer::default(),
             theme: Theme::default(),
             start_at_login: true,
+            event_duration: 60,
             placeholder: String::from("Time to be productive!"),
             search_url: "https://duckduckgo.com/search?q=%s".to_string(),
             cbhist: true,
@@ -66,6 +68,7 @@ impl Default for Config {
 pub enum MainPage {
     Favourites,
     FrequentlyUsed,
+    Events,
     #[default]
     Blank,
 }
@@ -73,9 +76,10 @@ pub enum MainPage {
 impl std::fmt::Display for MainPage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            MainPage::Blank => "♥️ Rustcast",
+            MainPage::Blank => "Rustcast",
             MainPage::Favourites => "Favourites",
             MainPage::FrequentlyUsed => "Frequently Used",
+            MainPage::Events => "Events",
         })
     }
 }
