@@ -35,6 +35,7 @@ pub struct Config {
     pub search_dirs: Vec<String>,
     pub log_path: String,
     pub debounce_delay: u64,
+    pub auto_update: bool,
 }
 
 impl Default for Config {
@@ -51,6 +52,7 @@ impl Default for Config {
             search_url: "https://duckduckgo.com/search?q=%s".to_string(),
             cbhist: true,
             haptic_feedback: false,
+            auto_update: true,
             show_trayicon: true,
             main_page: MainPage::default(),
             search_dirs: vec!["~".to_string()],

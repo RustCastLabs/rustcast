@@ -4,6 +4,7 @@ pub mod update;
 
 use crate::app::apps::App;
 use crate::app::{ArrowKey, Message, Move, Page};
+use crate::autoupdate::new_version_available;
 use crate::clipboard::ClipBoardContentType;
 use crate::config::{Config, Shelly};
 use crate::debounce::Debouncer;
@@ -33,7 +34,6 @@ use tray_icon::TrayIcon;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::str::FromStr;
 use std::time::Duration;
 
 /// This is a wrapper around the sender to disable dropping
@@ -609,46 +609,9 @@ fn reload_events() -> impl futures::Stream<Item = Message> {
 
 fn handle_version_and_rankings() -> impl futures::Stream<Item = Message> {
     stream::channel(100, async |mut output| {
-        let current_version = format!("\"{}\"", option_env!("APP_VERSION").unwrap_or(""));
-
-        if current_version.is_empty() {
-            println!("empty version");
-            return;
-        }
-
-        let req = minreq::Request::new(
-            minreq::Method::Get,
-            "https://api.github.com/repos/RustCastLabs/rustcast/releases/latest",
-        )
-        .with_header("User-Agent", "rustcast-update-checker")
-        .with_header("Accept", "application/vnd.github+json")
-        .with_header("X-GitHub-Api-Version", "2022-11-28");
-
         loop {
-            let resp = req
-                .clone()
-                .send()
-                .and_then(|x| x.as_str().map(serde_json::Value::from_str));
-
-            info!("Made a req for latest version");
-
-            if let Ok(Ok(val)) = resp {
-                let new_ver = val
-                    .get("name")
-                    .map(|x| x.to_string())
-                    .unwrap_or("".to_string());
-
-                // new_ver is in the format "\"v0.0.0\""
-                // note that it is encapsulated in double quotes
-                if new_ver.trim() != current_version
-                    && !new_ver.is_empty()
-                    && new_ver.starts_with("\"v")
-                {
-                    info!("new version available: {new_ver}");
-                    output.send(Message::UpdateAvailable).await.ok();
-                }
-            } else {
-                warn!("Error getting resp");
+            if new_version_available().is_some() {
+                output.send(Message::UpdateAvailable).await.ok();
             }
             tokio::time::sleep(Duration::from_secs(30)).await;
             output.send(Message::SaveRanking).await.ok();
