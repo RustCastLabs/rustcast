@@ -31,11 +31,14 @@ use crate::app::menubar::menu_builder;
 use crate::app::menubar::menu_icon;
 use crate::app::tile::AppIndex;
 use crate::app::{Message, Page, tile::Tile};
+use crate::autoupdate::download_latest_app;
+use crate::autoupdate::relaunch_app;
 use crate::calculator::Expr;
 use crate::commands::Function;
 use crate::config::Config;
 use crate::config::MainPage;
 use crate::debounce::DebouncePolicy;
+use crate::platform::macos::events::Event;
 use crate::platform::macos::launching::Shortcut;
 use crate::platform::macos::launching::global_handler;
 use crate::platform::macos::{start_at_login, stop_at_login};
@@ -117,6 +120,11 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             }
         }
 
+        Message::UpdateEvents => {
+            tile.events = Event::get_events(tile.config.event_duration);
+            Task::none()
+        }
+
         Message::UriReceived(uri) => {
             let Ok(url) = Url::parse(&uri) else {
                 return Task::none();
@@ -142,6 +150,13 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
 
         Message::UpdateAvailable => {
             tile.update_available = true;
+
+            if tile.config.auto_update {
+                thread::spawn(|| {
+                    download_latest_app().ok();
+                    relaunch_app();
+                });
+            }
             Task::done(Message::ReloadConfig)
         }
 
@@ -752,6 +767,15 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                 SetConfigFields::Modes(Editable::Create((key, value))) => {
                     final_config.modes.insert(key, value);
                 }
+                SetConfigFields::SetEventDuration(duration) => {
+                    if duration.trim().is_empty() {
+                        final_config.event_duration = 0;
+                    } else if let Ok(duration) = duration.parse::<u32>() {
+                        final_config.event_duration = duration;
+                    }
+
+                    tile.events = Event::get_events(final_config.event_duration);
+                }
                 SetConfigFields::Modes(Editable::Delete((key, _))) => {
                     final_config.modes.remove(&key);
                 }
@@ -841,6 +865,9 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                 SetConfigFields::DebounceDelay(delay) => final_config.debounce_delay = delay,
                 SetConfigFields::HapticFeedback(haptic_feedback) => {
                     final_config.haptic_feedback = haptic_feedback
+                }
+                SetConfigFields::SetAutoUpdate(au) => {
+                    final_config.auto_update = au;
                 }
                 SetConfigFields::ShowMenubarIcon(show) => final_config.show_trayicon = show,
                 SetConfigFields::SetThemeFields(SetConfigThemeFields::Font(fnt)) => {
@@ -1022,6 +1049,7 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
     if tile.page == Page::Main && tile.query_lc.is_empty() {
         tile.results = match tile.config.main_page {
             MainPage::FrequentlyUsed => tile.frequent_results(),
+            MainPage::Events => tile.events.iter().map(|x| x.to_app()).collect(),
             MainPage::Blank => vec![],
             MainPage::Favourites => tile.options.get_favourites(),
         };
@@ -1172,51 +1200,41 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
         ]));
     }
 
-    if let Some(action) = deferred_action {
-        match action {
-            QueryAction::OpenWebsite(url) => {
-                tile.results.push(App {
-                    ranking: 0,
-                    open_command: AppCommand::Function(Function::OpenWebsite(url.clone())),
-                    desc: "Web Browsing".to_string(),
-                    icons: None,
-                    display_name: "Open Website: ".to_string() + &url,
-                    search_name: String::new(),
-                });
-            }
-            QueryAction::UnitConversions(conversions) => {
-                tile.results = conversions
-                    .into_iter()
-                    .map(|conversion| conversion.to_app())
-                    .collect();
-                return single_item_resize_task(id);
-            }
-            QueryAction::Calculation(res) => {
-                tile.results.push(App {
-                    ranking: 0,
-                    open_command: AppCommand::Function(Function::Calculate(res.clone())),
-                    desc: RUSTCAST_DESC_NAME.to_string(),
-                    icons: None,
-                    display_name: res.eval().map(|x| x.to_string()).unwrap_or_default(),
-                    search_name: "".to_string(),
-                });
-                return single_item_resize_task(id);
-            }
-            QueryAction::GoogleSearch(query) => {
-                tile.results = vec![App {
-                    ranking: 0,
-                    open_command: AppCommand::Function(Function::GoogleSearch(query.clone())),
-                    icons: None,
-                    desc: "Web Search".to_string(),
-                    display_name: format!("Search for: {}", query),
-                    search_name: String::new(),
-                }];
-                return single_item_resize_task(id);
-            }
-            QueryAction::SwitchToPage(_)
-            | QueryAction::ShowFavourites
-            | QueryAction::ShellCommand(_) => unreachable!(),
-        }
+    if is_valid_url(&tile.query) {
+        tile.results.push(App {
+            ranking: 0,
+            open_command: AppCommand::Function(Function::OpenWebsite(tile.query.clone())),
+            desc: "Web Browsing".to_string(),
+            icons: None,
+            display_name: "Open Website: ".to_string() + &tile.query,
+            search_name: String::new(),
+        });
+    } else if let Some(conversions) = unit_conversion::convert_query(&tile.query) {
+        tile.results = conversions
+            .into_iter()
+            .map(|conversion| conversion.to_app())
+            .collect();
+        return resize_task(id, tile.results.len() as u32);
+    } else if let Ok(res) = Expr::from_str(&tile.query) {
+        tile.results.push(App {
+            ranking: 0,
+            open_command: AppCommand::Function(Function::Calculate(res.clone())),
+            desc: RUSTCAST_DESC_NAME.to_string(),
+            icons: None,
+            display_name: res.eval().map(|x| x.to_string()).unwrap_or("".to_string()),
+            search_name: "".to_string(),
+        });
+        return single_item_resize_task(id);
+    } else if tile.query.ends_with("?") || tile.query.split_whitespace().nth(2).is_some() {
+        tile.results = vec![App {
+            ranking: 0,
+            open_command: AppCommand::Function(Function::GoogleSearch(tile.query.clone())),
+            icons: None,
+            desc: "Web Search".to_string(),
+            display_name: format!("Search for: {}", tile.query),
+            search_name: String::new(),
+        }];
+        return single_item_resize_task(id);
     }
 
     task

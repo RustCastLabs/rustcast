@@ -22,6 +22,7 @@ use crate::app::tile::{AppIndex, Hotkeys};
 use crate::app::{DEFAULT_WINDOW_HEIGHT, ToApp, ToApps};
 use crate::config::Theme;
 use crate::debounce::Debouncer;
+use crate::platform::macos::events::Event;
 use crate::styles::{
     contents_style, glass_border, glass_surface, results_scrollbar_style, rustcast_text_input_style,
 };
@@ -37,6 +38,8 @@ use crate::{
 pub fn new(hotkeys: Hotkeys, config: &Config) -> (Tile, Task<Message>) {
     let (id, open) = window::open(default_settings());
     info!("Opening window");
+
+    let events = Event::get_events(config.event_duration);
 
     let open = open.discard().chain(window::run(id, |handle| {
         platform::window_config(&handle.window_handle().expect("Unable to get window handle"));
@@ -78,6 +81,7 @@ pub fn new(hotkeys: Hotkeys, config: &Config) -> (Tile, Task<Message>) {
             results: vec![],
             options,
             hotkeys,
+            events,
             emoji_apps: AppIndex::from_apps(App::emoji_apps()),
             visible: true,
             frontmost: None,

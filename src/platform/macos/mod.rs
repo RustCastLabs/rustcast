@@ -1,6 +1,7 @@
 //! Macos specific logic, such as window settings, etc.
 pub mod accessibility;
 pub mod discovery;
+pub mod events;
 pub mod haptics;
 pub mod launching;
 pub mod urlscheme;

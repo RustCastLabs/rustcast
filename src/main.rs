@@ -1,5 +1,18 @@
 #![deny(clippy::dbg_macro)]
 
+mod app;
+mod autoupdate;
+mod calculator;
+mod clipboard;
+mod commands;
+mod config;
+mod debounce;
+mod platform;
+mod quit;
+mod styles;
+mod unit_conversion;
+mod utils;
+
 use std::{collections::HashMap, fs::OpenOptions, path::Path};
 
 use rustcast::{
