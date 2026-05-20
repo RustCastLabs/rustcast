@@ -1,6 +1,7 @@
 #![deny(clippy::dbg_macro)]
 
 pub mod app;
+pub mod autoupdate;
 pub mod calculator;
 pub mod clipboard;
 pub mod commands;
