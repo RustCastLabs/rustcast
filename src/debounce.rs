@@ -41,3 +41,37 @@ pub trait DebouncePolicy {
     /// Returns Some(delay_ms) if this page should debounce, None otherwise                        
     fn debounce_delay(&self, config: &Config) -> Option<Duration>;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{thread, time::Duration};
+
+    #[test]
+    fn debouncer_becomes_ready_after_delay_and_clears_itself() {
+        let mut debouncer = Debouncer::new(10);
+
+        assert!(!debouncer.is_ready());
+
+        debouncer.reset();
+        assert!(!debouncer.is_ready());
+
+        thread::sleep(Duration::from_millis(15));
+        assert!(debouncer.is_ready());
+        assert!(!debouncer.is_ready());
+    }
+
+    #[test]
+    fn debouncer_reset_restarts_the_timer() {
+        let mut debouncer = Debouncer::new(20);
+
+        debouncer.reset();
+        thread::sleep(Duration::from_millis(10));
+        debouncer.reset();
+        thread::sleep(Duration::from_millis(10));
+        assert!(!debouncer.is_ready());
+
+        thread::sleep(Duration::from_millis(15));
+        assert!(debouncer.is_ready());
+    }
+}

@@ -15,7 +15,7 @@ mod utils;
 
 use std::{collections::HashMap, fs::OpenOptions, path::Path};
 
-use crate::{
+use rustcast::{
     app::tile::{self, Hotkeys, Tile},
     config::Config,
     platform::macos::{get_autostart_status, launching::Shortcut},
@@ -24,7 +24,7 @@ use crate::{
 use log::info;
 use tracing_subscriber::{EnvFilter, Layer, util::SubscriberInitExt};
 
-use self::platform::set_activation_policy_accessory;
+use rustcast::platform::set_activation_policy_accessory;
 
 fn main() -> iced::Result {
     set_activation_policy_accessory();

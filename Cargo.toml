@@ -41,3 +41,7 @@ tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 tray-icon = "0.21.3"
 url = { version = "2.5.8", default-features = false }
 zip = "8.5.1"
+
+[dev-dependencies]
+tempfile = "3.23.0"
+zip = "8.5.1"

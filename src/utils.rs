@@ -63,3 +63,22 @@ pub fn is_valid_url(s: &str) -> bool {
         _ => false,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::is_valid_url;
+
+    #[test]
+    fn url_validation_accepts_supported_tlds() {
+        assert!(is_valid_url("example.com"));
+        assert!(is_valid_url("example.app"));
+        assert!(is_valid_url("openai.ai"));
+    }
+
+    #[test]
+    fn url_validation_rejects_non_urls() {
+        assert!(!is_valid_url("localhost"));
+        assert!(!is_valid_url("not a url"));
+        assert!(!is_valid_url("example.invalidtld"));
+    }
+}
