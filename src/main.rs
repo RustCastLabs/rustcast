@@ -15,7 +15,7 @@ mod utils;
 
 use std::{collections::HashMap, fs::OpenOptions, path::Path};
 
-use rustcast::{
+use crate::{
     app::tile::{self, Hotkeys, Tile},
     config::Config,
     platform::macos::{get_autostart_status, launching::Shortcut},
@@ -24,7 +24,7 @@ use rustcast::{
 use log::info;
 use tracing_subscriber::{EnvFilter, Layer, util::SubscriberInitExt};
 
-use rustcast::platform::set_activation_policy_accessory;
+use crate::platform::set_activation_policy_accessory;
 
 fn main() -> iced::Result {
     set_activation_policy_accessory();
@@ -84,6 +84,7 @@ fn main() -> iced::Result {
         toggle: show_hide,
         clipboard_hotkey: cbhist,
         shells: shell_map,
+        handle: None,
     };
 
     info!("Hotkeys loaded");

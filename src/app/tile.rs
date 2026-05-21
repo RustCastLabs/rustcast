@@ -10,7 +10,7 @@ use crate::config::{Config, Shelly};
 use crate::debounce::Debouncer;
 use crate::platform::default_app_paths;
 use crate::platform::macos::events::Event;
-use crate::platform::macos::launching::Shortcut;
+use crate::platform::macos::launching::{EventTapHandle, Shortcut};
 
 use arboard::Clipboard;
 
@@ -207,9 +207,23 @@ pub struct Tile {
 /// Stores the toggle [`HotKey`] and the Clipboard [`HotKey`]
 #[derive(Clone, Debug)]
 pub struct Hotkeys {
+    pub handle: Option<EventTapHandle>,
     pub toggle: Shortcut,
     pub clipboard_hotkey: Shortcut,
     pub shells: HashMap<Shortcut, Shelly>,
+}
+
+impl Hotkeys {
+    pub fn all_hotkeys(&self) -> Vec<Shortcut> {
+        let mut a = vec![self.toggle.clone(), self.clipboard_hotkey.clone()];
+        a.extend(
+            self.shells
+                .keys()
+                .map(|x| x.to_owned())
+                .collect::<Vec<Shortcut>>(),
+        );
+        a
+    }
 }
 
 impl Tile {

@@ -1,93 +1,179 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    ffi::c_void,
+    ptr::NonNull,
+    sync::{Arc, Mutex},
+};
 
-use block2::RcBlock;
-use objc2_app_kit::{NSEvent, NSEventMask, NSEventModifierFlags, NSEventType};
+use objc2_app_kit::NSEventModifierFlags;
+use objc2_core_foundation::{
+    CFMachPort, CFRetained, CFRunLoop, CFRunLoopSource, kCFRunLoopCommonModes,
+};
+use objc2_core_graphics::{
+    CGEvent, CGEventField, CGEventFlags, CGEventTapLocation, CGEventTapOptions,
+    CGEventTapPlacement, CGEventTapProxy, CGEventType,
+};
 
 use crate::{
     app::{Message, tile::ExtSender},
     platform::macos::accessibility::ensure_accessibility_permission,
 };
 
-pub fn global_handler(sender: ExtSender) {
-    ensure_accessibility_permission();
-    local_handler(sender.clone());
-    let mask = NSEventMask::KeyDown | NSEventMask::FlagsChanged;
-    let sender = Arc::new(Mutex::new(sender.0.clone()));
-
-    let block = RcBlock::new({
-        move |event: std::ptr::NonNull<NSEvent>| {
-            let event = unsafe { event.as_ref() };
-            let event_type = event.r#type();
-
-            let key_code = event.keyCode();
-            let mods = event.modifierFlags()
-                & (NSEventModifierFlags::Command
-                    | NSEventModifierFlags::Option
-                    | NSEventModifierFlags::Control
-                    | NSEventModifierFlags::Function
-                    | NSEventModifierFlags::CapsLock
-                    | NSEventModifierFlags::Shift);
-
-            let shortcut = match event_type {
-                NSEventType::KeyDown => Shortcut {
-                    key_code: Some(key_code),
-                    mods: if mods.0 != 0 { Some(mods.0) } else { None },
-                },
-                NSEventType::FlagsChanged => Shortcut {
-                    key_code: None,
-                    mods: if mods.0 != 0 { Some(mods.0) } else { None },
-                },
-                _ => return,
-            };
-
-            let mut s = sender.lock().unwrap();
-            let _ = s.try_send(Message::KeyPressed(shortcut));
-        }
-    });
-
-    NSEvent::addGlobalMonitorForEventsMatchingMask_handler(mask, &block);
+#[derive(Clone, Debug)]
+pub struct EventTapHandle {
+    tap_port: CFRetained<CFMachPort>,
+    loop_source: CFRetained<CFRunLoopSource>,
+    callback_data: *mut c_void,
 }
 
-pub fn local_handler(sender: ExtSender) {
-    let mask = NSEventMask::KeyDown | NSEventMask::FlagsChanged;
-    let sender = Arc::new(Mutex::new(sender.0.clone()));
+impl Drop for EventTapHandle {
+    fn drop(&mut self) {
+        CGEvent::tap_enable(&self.tap_port, false);
 
-    let block = RcBlock::new({
-        move |event: std::ptr::NonNull<NSEvent>| -> *mut NSEvent {
-            let event_ref = unsafe { event.as_ref() };
-            let event_type = event_ref.r#type();
+        let run_loop = CFRunLoop::main().expect("Failed to get main CFRunLoop");
+        run_loop.remove_source(Some(&self.loop_source), unsafe { kCFRunLoopCommonModes });
 
-            let key_code = event_ref.keyCode();
-            let mods = event_ref.modifierFlags()
-                & (NSEventModifierFlags::Command
-                    | NSEventModifierFlags::Option
-                    | NSEventModifierFlags::Control
-                    | NSEventModifierFlags::Function
-                    | NSEventModifierFlags::CapsLock
-                    | NSEventModifierFlags::Shift);
+        // Free the callback data
+        if !self.callback_data.is_null() {
+            unsafe {
+                drop(Box::from_raw(self.callback_data as *mut CallbackData));
+            }
+        }
+    }
+}
 
-            let shortcut = match event_type {
-                NSEventType::KeyDown => Shortcut {
-                    key_code: Some(key_code),
-                    mods: if mods.0 != 0 { Some(mods.0) } else { None },
-                },
-                NSEventType::FlagsChanged => Shortcut {
-                    key_code: None,
-                    mods: if mods.0 != 0 { Some(mods.0) } else { None },
-                },
-                _ => return event.as_ptr(), // pass through unhandled events
+extern "C-unwind" fn keyboard_event_callback(
+    _proxy: CGEventTapProxy,
+    event_type: CGEventType,
+    mut event: NonNull<CGEvent>,
+    user_info: *mut c_void,
+) -> *mut CGEvent {
+    if user_info.is_null() {
+        log::error!("Null user_info in keyboard_event_callback");
+        return unsafe { event.as_mut() };
+    }
+
+    let data = unsafe { &*(user_info as *const CallbackData) };
+
+    let key_code: u16 = unsafe {
+        CGEvent::integer_value_field(Some(event.as_ref()), CGEventField::KeyboardEventKeycode)
+    } as u16;
+
+    let flags: CGEventFlags = unsafe { CGEvent::flags(Some(event.as_ref())) };
+
+    let mut mods = NSEventModifierFlags::empty();
+
+    if flags.contains(CGEventFlags::MaskCommand) {
+        mods |= NSEventModifierFlags::Command;
+    }
+    if flags.contains(CGEventFlags::MaskAlternate) {
+        mods |= NSEventModifierFlags::Option;
+    }
+    if flags.contains(CGEventFlags::MaskControl) {
+        mods |= NSEventModifierFlags::Control;
+    }
+    if flags.contains(CGEventFlags::MaskShift) {
+        mods |= NSEventModifierFlags::Shift;
+    }
+    if flags.contains(CGEventFlags::MaskAlphaShift) {
+        mods |= NSEventModifierFlags::CapsLock;
+    }
+    if flags.contains(CGEventFlags::MaskSecondaryFn) {
+        mods |= NSEventModifierFlags::Function;
+    }
+
+    let shortcut = match event_type {
+        CGEventType::KeyDown => Shortcut {
+            key_code: Some(key_code),
+            mods: if mods.0 != 0 { Some(mods.0) } else { None },
+        },
+        CGEventType::FlagsChanged => {
+            let is_press = match key_code {
+                56 | 60 => flags.contains(CGEventFlags::MaskShift), // LSHIFT | RSHIFT
+                59 | 62 => flags.contains(CGEventFlags::MaskControl), // LCTRL  | RCTRL
+                58 | 61 => flags.contains(CGEventFlags::MaskAlternate), // LOPT   | ROPT
+                55 | 54 => flags.contains(CGEventFlags::MaskCommand), // LCMD   | RCMD
+                63 => flags.contains(CGEventFlags::MaskSecondaryFn), // FN
+                57 => flags.contains(CGEventFlags::MaskAlphaShift), // CAPSLOCK
+                _ => false,
             };
 
-            let mut s = sender.lock().unwrap();
-            let _ = s.try_send(Message::KeyPressed(shortcut));
+            if !is_press {
+                return unsafe { event.as_mut() };
+            }
 
-            event.as_ptr()
+            let self_flag = match key_code {
+                56 | 60 => NSEventModifierFlags::Shift,   // LSHIFT | RSHIFT
+                59 | 62 => NSEventModifierFlags::Control, // LCTRL  | RCTRL
+                58 | 61 => NSEventModifierFlags::Option,  // LOPT   | ROPT
+                55 | 54 => NSEventModifierFlags::Command, // LCMD   | RCMD
+                63 => NSEventModifierFlags::Function,     // FN
+                57 => NSEventModifierFlags::CapsLock,     // CAPSLOCK
+                _ => NSEventModifierFlags::empty(),
+            };
+
+            mods.remove(self_flag);
+
+            Shortcut {
+                key_code: Some(key_code),
+                mods: if mods.is_empty() { None } else { Some(mods.0) },
+            }
         }
-    });
+        _ => return unsafe { event.as_mut() },
+    };
 
-    unsafe {
-        NSEvent::addLocalMonitorForEventsMatchingMask_handler(mask, &block);
+    if !data.targets.iter().any(|t| *t == shortcut) {
+        return unsafe { event.as_mut() };
     }
+
+    if let Ok(mut sender) = data.sender.lock() {
+        sender.0.try_send(Message::KeyPressed(shortcut)).unwrap();
+    }
+
+    unsafe { event.as_mut() }
+}
+
+pub struct CallbackData {
+    sender: Arc<Mutex<ExtSender>>,
+    targets: Vec<Shortcut>,
+}
+
+pub fn global_handler(sender: ExtSender, targets: Vec<Shortcut>) -> Result<EventTapHandle, String> {
+    ensure_accessibility_permission(); // make it return Result
+
+    let callback_data = Box::new(CallbackData {
+        sender: Arc::new(Mutex::new(sender)),
+        targets,
+    });
+    let user_info = Box::into_raw(callback_data) as *mut c_void;
+
+    let mask =
+        (1u64 << CGEventType::KeyDown.0 as u64) | (1u64 << CGEventType::FlagsChanged.0 as u64);
+
+    let tap_port = unsafe {
+        CGEvent::tap_create(
+            CGEventTapLocation::SessionEventTap,
+            CGEventTapPlacement::HeadInsertEventTap,
+            CGEventTapOptions::Default,
+            mask,
+            Some(keyboard_event_callback),
+            user_info,
+        )
+    }
+    .unwrap();
+
+    let loop_source = CFMachPort::new_run_loop_source(None, Some(&tap_port), 0)
+        .ok_or_else(|| "Failed to create run loop source".to_string())?;
+
+    let run_loop = CFRunLoop::main().ok_or_else(|| "Failed to get main run loop".to_string())?;
+    run_loop.add_source(Some(&loop_source), unsafe { kCFRunLoopCommonModes });
+
+    CGEvent::tap_enable(&tap_port, true);
+
+    Ok(EventTapHandle {
+        tap_port,
+        loop_source,
+        callback_data: user_info,
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -185,7 +185,13 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
 
         Message::SetSender(sender) => {
             tile.sender = Some(sender.clone());
-            global_handler(sender.clone());
+            match global_handler(sender.clone(), tile.hotkeys.all_hotkeys()) {
+                Ok(a) => tile.hotkeys.handle = Some(a),
+                Err(e) => {
+                    log::error!("Error when registering hotkey: {e}");
+                    std::process::exit(1);
+                }
+            };
             if tile.config.show_trayicon {
                 tile.tray_icon = Some(menu_icon(tile.config.clone(), sender));
             }
@@ -413,7 +419,11 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
 
             tile.theme = new_config.theme.to_owned().into();
             tile.config = new_config;
-            Task::batch([Task::done(Message::LoadRanking), update_apps_task])
+            Task::batch([
+                Task::done(Message::LoadRanking),
+                update_apps_task,
+                Task::done(Message::SetSender(tile.sender.clone().unwrap())),
+            ])
         }
 
         Message::KeyPressed(shortcut) => {
@@ -760,7 +770,7 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
 
         Message::SetConfig(config) => {
             let mut final_config = tile.config.clone();
-            match config {
+            match config.clone() {
                 SetConfigFields::ToggleHotkey(hk) => final_config.toggle_hotkey = hk,
                 SetConfigFields::ClipboardHotkey(hk) => final_config.clipboard_hotkey = hk,
                 SetConfigFields::ClipboardHistory(cbhist) => final_config.cbhist = cbhist,
@@ -1120,7 +1130,7 @@ fn execute_query(tile: &mut Tile, id: Id) -> Task<Message> {
         _ => {}
     }
 
-    let deferred_action = if let Some(action) =
+    let _deferred_action = if let Some(action) =
         classify_query_action(&tile.page, &tile.query, &tile.query_lc)
     {
         match action {
@@ -1300,6 +1310,7 @@ mod tests {
                 toggle: Shortcut::parse("alt+space").unwrap(),
                 clipboard_hotkey: Shortcut::parse("cmd+shift+c").unwrap(),
                 shells: HashMap::new(),
+                handle: None,
             },
             clipboard_content: Vec::new(),
             tray_icon: None,
