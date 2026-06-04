@@ -948,6 +948,18 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             Task::none()
         }
 
+        Message::CheckEventTap => {
+            info!("Re-creating global event tap");
+            if let Some(ref sender) = tile.sender {
+                tile.hotkeys.handle = None;
+                match global_handler(sender.clone(), tile.hotkeys.all_hotkeys()) {
+                    Ok(handle) => tile.hotkeys.handle = Some(handle),
+                    Err(e) => log::error!("Failed to re-create event tap: {e}"),
+                }
+            }
+            Task::none()
+        }
+
         Message::DebouncedSearch(id) => {
             // Only execute if this is still the most recent debounce timer
             if !tile.debouncer.is_ready() {
