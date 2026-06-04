@@ -32,7 +32,6 @@ use crate::app::menubar::menu_icon;
 use crate::app::tile::AppIndex;
 use crate::app::{Message, Page, tile::Tile};
 use crate::autoupdate::download_latest_app;
-use crate::autoupdate::relaunch_app;
 use crate::calculator::Expr;
 use crate::commands::Function;
 use crate::config::Config;
@@ -154,7 +153,6 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             if tile.config.auto_update {
                 thread::spawn(|| {
                     download_latest_app().ok();
-                    relaunch_app();
                 });
             }
             Task::done(Message::ReloadConfig)
@@ -945,6 +943,18 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
 
         Message::ClearClipboardHistory => {
             tile.clipboard_content.clear();
+            Task::none()
+        }
+
+        Message::CheckEventTap => {
+            info!("Re-creating global event tap");
+            if let Some(ref sender) = tile.sender {
+                tile.hotkeys.handle = None;
+                match global_handler(sender.clone(), tile.hotkeys.all_hotkeys()) {
+                    Ok(handle) => tile.hotkeys.handle = Some(handle),
+                    Err(e) => log::error!("Failed to re-create event tap: {e}"),
+                }
+            }
             Task::none()
         }
 

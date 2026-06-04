@@ -118,6 +118,7 @@ pub enum Message {
     FileSearchClear,
     SetFileSearchSender(tokio::sync::watch::Sender<(String, Vec<String>)>),
     DebouncedSearch(Id),
+    CheckEventTap,
 }
 
 #[derive(Debug, Clone)]

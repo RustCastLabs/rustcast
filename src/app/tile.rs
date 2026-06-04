@@ -266,6 +266,7 @@ impl Tile {
             Subscription::run(handle_recipient),
             Subscription::run(reload_events),
             Subscription::run(handle_version_and_rankings),
+            Subscription::run(check_event_tap),
             Subscription::run(handle_clipboard_history),
             Subscription::run(handle_file_search),
             window::close_events().map(Message::HideWindow),
@@ -790,6 +791,15 @@ fn reload_events() -> impl futures::Stream<Item = Message> {
         loop {
             output.send(Message::UpdateEvents).await.ok();
             tokio::time::sleep(Duration::from_mins(2)).await;
+        }
+    })
+}
+
+fn check_event_tap() -> impl futures::Stream<Item = Message> {
+    stream::channel(100, async |mut output| {
+        loop {
+            tokio::time::sleep(Duration::from_secs(5)).await;
+            output.send(Message::CheckEventTap).await.ok();
         }
     })
 }
