@@ -32,7 +32,6 @@ use crate::app::menubar::menu_icon;
 use crate::app::tile::AppIndex;
 use crate::app::{Message, Page, tile::Tile};
 use crate::autoupdate::download_latest_app;
-use crate::autoupdate::relaunch_app;
 use crate::calculator::Expr;
 use crate::commands::Function;
 use crate::config::Config;
@@ -154,7 +153,6 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
             if tile.config.auto_update {
                 thread::spawn(|| {
                     download_latest_app().ok();
-                    relaunch_app();
                 });
             }
             Task::done(Message::ReloadConfig)

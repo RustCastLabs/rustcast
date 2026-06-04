@@ -188,27 +188,6 @@ fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::
     Ok(())
 }
 
-pub fn relaunch_app() {
-    let app_path = match get_app_path() {
-        Some(p) => p,
-        None => {
-            error!("Could not determine current app path for relaunch");
-            return;
-        }
-    };
-
-    match std::process::Command::new("open").arg(&app_path).spawn() {
-        Ok(_) => {
-            info!("Relaunching app at {:?}", app_path);
-            std::thread::sleep(std::time::Duration::from_millis(500));
-            std::process::exit(0);
-        }
-        Err(e) => {
-            error!("Could not relaunch app: {e}");
-        }
-    }
-}
-
 pub fn get_app_path() -> Option<std::path::PathBuf> {
     let exe = std::env::current_exe().ok()?;
 
