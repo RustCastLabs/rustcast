@@ -35,6 +35,8 @@
 		</array>
 		<key>NSHumanReadableCopyright</key>
 		<string>Copyright © 2025 Umang Surana. All rights reserved.</string>
+		<key>NSCalendarsUsageDescription</key>
+		<string>RustCast needs to access your calendar to display upcoming events.</string>
 		<key>NSInputMonitoringUsageDescription</key>
 		<string>RustCast needs to monitor keyboard input to detect global shortcuts and control casting.</string>
 		<key>CFBundleIconFile</key>
