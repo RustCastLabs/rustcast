@@ -177,6 +177,40 @@ impl App {
         ]
     }
 
+    /// Window tiling actions (12 positions)
+    pub fn window_apps() -> Vec<App> {
+        use crate::platform::macos::window::TilePosition;
+
+        let icons = icns_data_to_handle(ICNS_ICON.to_vec());
+
+        let actions: &[(&str, TilePosition)] = &[
+            ("Left Half", TilePosition::LeftHalf),
+            ("Right Half", TilePosition::RightHalf),
+            ("Top Half", TilePosition::TopHalf),
+            ("Bottom Half", TilePosition::BottomHalf),
+            ("Top Left Quarter", TilePosition::TopLeft),
+            ("Top Right Quarter", TilePosition::TopRight),
+            ("Bottom Left Quarter", TilePosition::BottomLeft),
+            ("Bottom Right Quarter", TilePosition::BottomRight),
+            ("Left Third", TilePosition::LeftThird),
+            ("Center Third", TilePosition::CenterThird),
+            ("Right Third", TilePosition::RightThird),
+            ("Maximize", TilePosition::Maximize),
+        ];
+
+        actions
+            .iter()
+            .map(|(name, pos)| App {
+                ranking: 0,
+                open_command: AppCommand::Function(Function::TileWindow(pos.clone())),
+                desc: "Window Tiling".to_string(),
+                icons: icons.clone(),
+                display_name: name.to_string(),
+                search_name: name.to_lowercase(),
+            })
+            .collect()
+    }
+
     /// This renders the app into an iced element, allowing it to be displayed in the search results
     pub fn render(
         self,

@@ -28,6 +28,7 @@ pub enum Function {
     GoogleSearch(String),
     Calculate(Expr),
     Quit,
+    TileWindow(crate::platform::macos::window::TilePosition),
 }
 
 impl Function {
@@ -122,6 +123,10 @@ impl Function {
             },
 
             Function::Quit => std::process::exit(0),
+
+            // TileWindow is intercepted in the RunFunction handler which has
+            // access to the frontmost PID; nothing to do here.
+            Function::TileWindow(_) => {}
         }
     }
 }
