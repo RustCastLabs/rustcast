@@ -5,6 +5,7 @@ pub mod events;
 pub mod haptics;
 pub mod launching;
 pub mod urlscheme;
+pub mod window;
 
 use iced::wgpu::rwh::WindowHandle;
 
