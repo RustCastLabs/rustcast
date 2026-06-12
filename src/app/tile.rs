@@ -828,7 +828,9 @@ fn handle_theme_mode() -> impl futures::Stream<Item = Message> {
     })
 }
 
-fn handle_version_and_rankings(check_for_updates: &bool) -> impl futures::Stream<Item = Message> + use<> {
+fn handle_version_and_rankings(
+    check_for_updates: &bool,
+) -> impl futures::Stream<Item = Message> + use<> {
     let check_for_updates = *check_for_updates;
     stream::channel(100, async move |mut output| {
         loop {
