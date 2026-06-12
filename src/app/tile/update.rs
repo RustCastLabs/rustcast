@@ -959,6 +959,9 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                 SetConfigFields::SetAutoUpdate(au) => {
                     final_config.auto_update = au;
                 }
+                SetConfigFields::SetCheckForUpdates(check) => {
+                    final_config.check_for_updates = check;
+                }
                 SetConfigFields::ShowMenubarIcon(show) => final_config.show_trayicon = show,
                 SetConfigFields::SetThemeFields(SetConfigThemeFields::Font(fnt)) => {
                     final_config.theme.font = Some(fnt)
@@ -1013,6 +1016,9 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                 ResetField::DebounceDelay => tile.config.debounce_delay = default.debounce_delay,
                 ResetField::StartAtLogin => tile.config.start_at_login = default.start_at_login,
                 ResetField::AutoUpdate => tile.config.auto_update = default.auto_update,
+                ResetField::CheckForUpdates => {
+                    tile.config.check_for_updates = default.check_for_updates;
+                }
                 ResetField::HapticFeedback => tile.config.haptic_feedback = default.haptic_feedback,
                 ResetField::ShowMenubarIcon => tile.config.show_trayicon = default.show_trayicon,
                 ResetField::ClipboardHistory => tile.config.cbhist = default.cbhist,

@@ -267,7 +267,7 @@ impl Tile {
             Subscription::run(crate::platform::macos::urlscheme::url_stream),
             Subscription::run(handle_recipient),
             Subscription::run(reload_events),
-            Subscription::run(handle_version_and_rankings),
+            Subscription::run_with(self.config.check_for_updates, handle_version_and_rankings),
             Subscription::run(handle_theme_mode),
             Subscription::run(check_event_tap),
             Subscription::run(handle_clipboard_history),
@@ -828,10 +828,13 @@ fn handle_theme_mode() -> impl futures::Stream<Item = Message> {
     })
 }
 
-fn handle_version_and_rankings() -> impl futures::Stream<Item = Message> {
-    stream::channel(100, async |mut output| {
+fn handle_version_and_rankings(
+    check_for_updates: &bool,
+) -> impl futures::Stream<Item = Message> + use<> {
+    let check_for_updates = *check_for_updates;
+    stream::channel(100, async move |mut output| {
         loop {
-            if new_version_available().is_some() {
+            if check_for_updates && new_version_available().is_some() {
                 output.send(Message::UpdateAvailable).await.ok();
             }
             tokio::time::sleep(Duration::from_secs(30)).await;

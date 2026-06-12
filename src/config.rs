@@ -37,6 +37,7 @@ pub struct Config {
     pub log_path: String,
     pub debounce_delay: u64,
     pub auto_update: bool,
+    pub check_for_updates: bool,
 }
 
 impl Default for Config {
@@ -55,6 +56,7 @@ impl Default for Config {
             cbhist_paste_on_select: false,
             haptic_feedback: false,
             auto_update: true,
+            check_for_updates: true,
             show_trayicon: true,
             main_page: MainPage::default(),
             search_dirs: vec!["~".to_string()],

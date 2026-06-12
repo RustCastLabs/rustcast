@@ -265,6 +265,25 @@ fn general_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'stat
     );
 
     let theme_clone = theme.clone();
+    let check_for_updates = settings_row_with_reset(
+        settings_item_row([
+            settings_hint_text(theme.clone(), "Check for updates"),
+            checkbox(config.clone().check_for_updates)
+                .style(move |_, _| settings_checkbox_style(&theme_clone))
+                .on_toggle(move |input| {
+                    Message::SetConfig(SetConfigFields::SetCheckForUpdates(input))
+                })
+                .into(),
+            notice_item(
+                theme.clone(),
+                "If rustcast should check for new releases and show the menubar indicator",
+            ),
+        ]),
+        ResetField::CheckForUpdates,
+        theme.clone(),
+    );
+
+    let theme_clone = theme.clone();
     let haptic = settings_row_with_reset(
         Row::from_iter([
             settings_hint_text(theme.clone(), "Haptic feedback"),
@@ -400,6 +419,7 @@ fn general_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'stat
         debounce,
         start_at_login,
         auto_update,
+        check_for_updates,
         haptic,
         tray_icon,
         clipboard_history,
