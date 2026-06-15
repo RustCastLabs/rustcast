@@ -193,6 +193,12 @@ pub fn handle_update(tile: &mut Tile, message: Message) -> Task<Message> {
                     std::process::exit(1);
                 }
             };
+            if let Some(ref mut icon) = tile.tray_icon {
+                icon.set_menu(Some(Box::new(menu_builder(
+                    tile.config.clone(),
+                    sender,
+                    tile.update_available,
+                ))));
             if tile.config.show_trayicon {
                 tile.tray_icon = Some(menu_icon(tile.config.clone(), sender));
             }
