@@ -167,7 +167,6 @@ pub enum Message {
     FileSearchClear,
     SetFileSearchSender(tokio::sync::watch::Sender<(String, Vec<String>)>),
     DebouncedSearch(Id),
-    CheckEventTap,
     ThemeModeChanged(bool),
     SimulatePaste(i32),
 }
