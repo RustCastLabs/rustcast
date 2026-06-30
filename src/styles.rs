@@ -407,6 +407,13 @@ pub fn glass_surface(base: Color, focused: bool) -> Color {
     with_alpha(tint(base, t), a)
 }
 
+/// The settings window is opaque, but `theme.bg_color()` has an alpha of 0 so it
+/// would let the window background bleed through. This returns a fully opaque,
+/// slightly tinted surface so panels read as distinct from the window background.
+pub fn settings_surface(base: Color, amount: f32) -> Color {
+    with_alpha(tint(base, amount), 1.0)
+}
+
 /// Helper fn for making a borders color look like its glassy
 pub fn glass_border(base_text: Color, focused: bool) -> Color {
     let a = if focused { 0.35 } else { 0.22 };
