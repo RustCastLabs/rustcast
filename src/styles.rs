@@ -44,7 +44,7 @@ pub fn contents_style(theme: &ConfigTheme) -> container::Style {
         background: None,
         text_color: None,
         border: iced::Border {
-            color: theme.text_color(0.9),
+            color: theme.bg_color(),
             width: 0.4,
             radius: Radius::new(14.0),
         },
@@ -120,7 +120,7 @@ pub fn results_scrollbar_style(tile: &ConfigTheme) -> scrollable::Style {
             scroller: scrollable::Scroller {
                 background: Background::Color(tile.text_color(0.7)),
                 border: Border {
-                    color: tile.text_color(1.),
+                    color: tile.bg_color(),
                     width: 0.1,
                     radius: Radius::new(0),
                 },
@@ -159,7 +159,7 @@ pub fn result_row_container_style(tile: &ConfigTheme, focused: bool) -> containe
     container::Style {
         background: Some(Background::Color(glass_surface(tile.bg_color(), focused))),
         border: Border {
-            color: glass_border(tile.text_color(1.), focused),
+            color: glass_border(tile.bg_color(), focused),
             width: 0.,
             radius: Radius::new(0.0),
         },

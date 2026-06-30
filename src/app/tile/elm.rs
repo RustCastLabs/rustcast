@@ -271,7 +271,7 @@ fn footer(theme: Theme, current_mode: String, text: String) -> Element<'static, 
             false,
         ))),
         border: iced::Border {
-            color: glass_border(theme.text_color(1.0), false),
+            color: glass_border(theme.bg_color(), false),
             width: 0.,
             radius: Radius::new(radius).top(0.0),
         },
