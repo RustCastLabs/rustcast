@@ -31,14 +31,14 @@ pub const FILE_SEARCH_BATCH_SIZE: u32 = 10;
 /// The rustcast descriptor name to be put for all rustcast commands
 pub const RUSTCAST_DESC_NAME: &str = "Utility";
 
-/// The different pages that rustcast can have / has
+/// The different pages that rustcast can have / has within the launcher
+/// Settings is notably missing since this opens as a new window outside the launcher
 #[derive(Debug, Clone, PartialEq)]
 pub enum Page {
     Main,
     FileSearch,
     ClipboardHistory,
     EmojiSearch,
-    Settings,
 }
 
 /// The settings panel tabs
@@ -94,7 +94,6 @@ impl std::fmt::Display for Page {
             Page::FileSearch => "File search",
             Page::EmojiSearch => "Emoji search",
             Page::ClipboardHistory => "Clipboard history",
-            Page::Settings => "Settings",
         })
     }
 }
@@ -127,7 +126,7 @@ pub enum Editable<T> {
 #[derive(Debug, Clone)]
 pub enum Message {
     UriReceived(String),
-    WriteConfig(bool),
+    WriteConfig,
     SaveRanking,
     ToggleAutoStartup(bool),
     LoadRanking,
@@ -136,7 +135,6 @@ pub enum Message {
     ResizeWindow(Id, f32),
     OpenWindow,
     OpenResult(u32),
-    OpenToSettings,
     SearchQueryChanged(String, Id),
     KeyPressed(Shortcut),
     FocusTextInput(Move),
@@ -169,6 +167,8 @@ pub enum Message {
     DebouncedSearch(Id),
     ThemeModeChanged(bool),
     SimulatePaste(i32),
+    OpenSettingsWindow,
+    SettingsWindowOpened(window::Id),
 }
 
 #[derive(Debug, Clone)]
@@ -224,6 +224,23 @@ pub fn default_settings() -> Settings {
             width: WINDOW_WIDTH,
             height: DEFAULT_WINDOW_HEIGHT,
         },
+        ..Default::default()
+    }
+}
+
+pub fn settings_window_settings() -> window::Settings {
+    Settings {
+        resizable: false,
+        decorations: true,
+        minimizable: false,
+        level: window::Level::AlwaysOnTop,
+        transparent: false,
+        blur: false,
+        size: iced::Size {
+            width: 900.,
+            height: 600.,
+        },
+        position: window::Position::Centered,
         ..Default::default()
     }
 }
@@ -287,7 +304,7 @@ impl ToApps for HashMap<String, String> {
 impl DebouncePolicy for Page {
     fn debounce_delay(&self, config: &Config) -> Option<Duration> {
         match self {
-            Page::Main | Page::ClipboardHistory | Page::Settings => None,
+            Page::Main | Page::ClipboardHistory => None,
             Page::FileSearch | Page::EmojiSearch => {
                 Some(Duration::from_millis(config.debounce_delay))
             }
@@ -306,7 +323,6 @@ mod tests {
         assert_eq!(Page::FileSearch.to_string(), "File search");
         assert_eq!(Page::ClipboardHistory.to_string(), "Clipboard history");
         assert_eq!(Page::EmojiSearch.to_string(), "Emoji search");
-        assert_eq!(Page::Settings.to_string(), "Settings");
     }
 
     #[test]
@@ -318,7 +334,6 @@ mod tests {
 
         assert_eq!(Page::Main.debounce_delay(&config), None);
         assert_eq!(Page::ClipboardHistory.debounce_delay(&config), None);
-        assert_eq!(Page::Settings.debounce_delay(&config), None);
         assert_eq!(
             Page::FileSearch.debounce_delay(&config),
             Some(Duration::from_millis(123))

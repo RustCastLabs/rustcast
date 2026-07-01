@@ -2,7 +2,8 @@
 use crate::config::Theme as ConfigTheme;
 use iced::Shadow;
 use iced::border::Radius;
-use iced::widget::{button, checkbox, container, radio, scrollable, slider};
+use iced::widget::toggler::Status;
+use iced::widget::{button, container, radio, scrollable, slider, toggler};
 use iced::{Background, Border, Color, widget::text_input};
 
 /// Helper: mix base color with white (simple “tint”)
@@ -298,13 +299,10 @@ pub fn settings_tab_style(
     }
 }
 
-/// Clean container style for the settings panel (non-glass, flat).
-pub fn settings_container_style(theme: &ConfigTheme) -> container::Style {
+/// Clean container style for the tabs in the settings panel (non-glass, flat).
+pub fn settings_tabs_container_style(theme: &ConfigTheme) -> container::Style {
     container::Style {
-        background: Some(Background::Color(with_alpha(
-            tint(theme.bg_color(), 0.04),
-            0.25,
-        ))),
+        background: Some(Background::Color(settings_surface(theme.bg_color(), 0.12))),
         border: Border {
             color: theme.text_color(0.15),
             width: 0.5,
@@ -315,16 +313,67 @@ pub fn settings_container_style(theme: &ConfigTheme) -> container::Style {
     }
 }
 
-pub fn settings_checkbox_style(theme: &ConfigTheme) -> checkbox::Style {
-    checkbox::Style {
-        background: Background::Color(Color::TRANSPARENT),
-        icon_color: theme.text_color(1.),
-        border: iced::Border {
-            color: theme.text_color(1.),
-            width: 1.,
-            radius: Radius::new(2.),
+/// Clean container style for the contents in settings panel (non-glass, flat).
+pub fn settings_contents_container_style(theme: &ConfigTheme) -> container::Style {
+    container::Style {
+        background: Some(Background::Color(settings_surface(theme.bg_color(), 0.10))),
+        border: Border {
+            color: theme.text_color(0.15),
+            width: 0.5,
+            radius: Radius::new(10),
         },
-        text_color: None,
+        text_color: Some(theme.text_color(1.0)),
+        ..Default::default()
+    }
+}
+
+pub fn settings_toggle_style(status: toggler::Status) -> toggler::Style {
+    match status {
+        Status::Active { is_toggled } => toggler::Style {
+            background: if is_toggled {
+                Background::Color(Color::from_rgb8(52, 199, 89)) // iOS System Green
+            } else {
+                Background::Color(Color::from_rgb8(174, 174, 178)) // iOS Gray
+            },
+            background_border_width: 0.0,
+            background_border_color: Color::TRANSPARENT,
+            foreground: Background::Color(Color::WHITE),
+            foreground_border_width: 0.0,
+            foreground_border_color: Color::TRANSPARENT,
+            text_color: Some(Color::BLACK),
+            border_radius: None,
+            padding_ratio: 0.05,
+        },
+        Status::Hovered { is_toggled } => toggler::Style {
+            background: if is_toggled {
+                Background::Color(Color::from_rgb8(48, 183, 82)) // Slightly deeper green
+            } else {
+                Background::Color(Color::from_rgb8(218, 218, 219)) // Slightly darker track gray
+            },
+            background_border_width: 0.0,
+            background_border_color: Color::TRANSPARENT,
+            foreground: Background::Color(Color::WHITE),
+            foreground_border_width: 0.0,
+            foreground_border_color: Color::TRANSPARENT,
+            text_color: Some(Color::BLACK),
+            border_radius: None,
+            padding_ratio: 0.05,
+        },
+        Status::Disabled { is_toggled } => toggler::Style {
+            background: if is_toggled {
+                Background::Color(Color::from_rgb8(179, 238, 194)) // Desaturated translucent green
+            } else {
+                Background::Color(Color::from_rgb8(242, 242, 247)) // Very faint gray
+            },
+            background_border_width: 0.0,
+            background_border_color: Color::TRANSPARENT,
+            foreground: Background::Color(Color::from_rgb8(250, 250, 250)), // Off-white handle
+            foreground_border_width: 0.0,
+            foreground_border_color: Color::TRANSPARENT,
+            text_color: Some(Color::from_rgb8(174, 174, 178)), // iOS Gray
+            border_radius: None,
+            padding_ratio: 0.05,
+        },
     }
 }
 
@@ -356,6 +405,13 @@ pub fn glass_surface(base: Color, focused: bool) -> Color {
     let t = if focused { 0.2 } else { 0.06 };
     let a = if focused { 0.9 } else { 0.58 };
     with_alpha(tint(base, t), a)
+}
+
+/// The settings window is opaque, but `theme.bg_color()` has an alpha of 0 so it
+/// would let the window background bleed through. This returns a fully opaque,
+/// slightly tinted surface so panels read as distinct from the window background.
+pub fn settings_surface(base: Color, amount: f32) -> Color {
+    with_alpha(tint(base, amount), 1.0)
 }
 
 /// Helper fn for making a borders color look like its glassy

@@ -4,14 +4,21 @@ use std::collections::HashMap;
 
 use iced::Border;
 use iced::border::Radius;
+use iced::widget::Container;
+use iced::widget::Scrollable;
 use iced::widget::Slider;
 use iced::widget::Space;
 use iced::widget::TextInput;
 use iced::widget::button;
-use iced::widget::checkbox;
 use iced::widget::radio;
+use iced::widget::scrollable::Direction;
+use iced::widget::scrollable::Scrollbar;
 use iced::widget::text_input;
+use iced::widget::toggler;
 
+use crate::styles::settings_contents_container_style;
+use crate::styles::settings_tabs_container_style;
+use crate::styles::settings_toggle_style;
 use crate::styles::tint;
 use crate::styles::with_alpha;
 
@@ -27,8 +34,6 @@ use crate::config::Shelly;
 use crate::config::ThemeMode;
 use crate::styles::delete_button_style;
 use crate::styles::settings_add_button_style;
-use crate::styles::settings_checkbox_style;
-use crate::styles::settings_container_style;
 use crate::styles::settings_radio_button_style;
 use crate::styles::settings_save_button_style;
 use crate::styles::settings_slider_style;
@@ -42,12 +47,13 @@ use crate::{
 const SETTINGS_ITEM_PADDING: u16 = 4;
 const SETTINGS_ITEM_HEIGHT: u32 = 55;
 const SETTINGS_ITEM_COL_SPACING: u32 = 3;
+const SETTINGS_INPUT_WIDTH: f32 = 250.0;
 
 pub fn settings_page(config: Config, settings_tab: SettingsTab) -> Element<'static, Message> {
     let config = Box::new(config.clone());
     let theme = config.theme.clone();
 
-    let tabs_row = Row::from_iter([
+    let tabs_column = Column::from_iter([
         tab_button("General", SettingsTab::General, settings_tab, theme.clone()),
         tab_button(
             "Appearance",
@@ -62,8 +68,15 @@ pub fn settings_page(config: Config, settings_tab: SettingsTab) -> Element<'stat
             theme.clone(),
         ),
     ])
-    .spacing(2)
-    .width(Length::Fill);
+    .spacing(2);
+
+    let theme_clone = theme.clone();
+    let tabs_container = Container::new(tabs_column)
+        .style(move |_| settings_tabs_container_style(&theme_clone))
+        .height(Length::Fill)
+        .width(Length::Fixed(SETTINGS_INPUT_WIDTH))
+        .padding(12)
+        .align_x(Alignment::Center);
 
     let tab_content: Column<'static, Message> = match settings_tab {
         SettingsTab::General => general_tab(config.clone(), theme.clone()),
@@ -71,8 +84,7 @@ pub fn settings_page(config: Config, settings_tab: SettingsTab) -> Element<'stat
         SettingsTab::Commands => commands_tab(config.clone(), theme.clone()),
     };
 
-    let items = Column::from_iter([
-        tabs_row.into(),
+    let contents_column = Column::from_iter([
         tab_content.into(),
         Space::new().height(10).into(),
         Row::from_iter([
@@ -80,18 +92,25 @@ pub fn settings_page(config: Config, settings_tab: SettingsTab) -> Element<'stat
             copy_config_button(config),
             wiki_button(theme.clone()),
         ])
-        .spacing(5)
         .width(Length::Fill)
         .into(),
-    ])
-    .spacing(10);
+    ]);
+
+    let contents_container = Container::new(Scrollable::with_direction(
+        contents_column,
+        Direction::Vertical(Scrollbar::hidden()),
+    ))
+    .style(move |_| settings_contents_container_style(&theme))
+    .height(Length::Fill)
+    .width(Length::Fill)
+    .padding(12)
+    .align_x(Alignment::Center);
+
+    let items = Row::from_iter([tabs_container.into(), contents_container.into()]);
 
     container(items)
-        .style(move |_| settings_container_style(&theme))
         .height(Length::Fill)
         .width(Length::Fill)
-        .padding(12)
-        .align_x(Alignment::Center)
         .into()
 }
 
@@ -118,7 +137,7 @@ fn tab_button(
 fn reset_button(theme: crate::config::Theme, field: ResetField) -> Element<'static, Message> {
     let theme_clone = theme.clone();
     Button::new(
-        Text::new("R")
+        Text::new("⟳")
             .align_x(Alignment::Center)
             .align_y(Alignment::Center)
             .size(13)
@@ -146,15 +165,19 @@ fn reset_button(theme: crate::config::Theme, field: ResetField) -> Element<'stat
 fn general_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'static, Message> {
     let theme_clone = theme.clone();
     let hotkey = settings_row_with_reset(
-        settings_item_column([
-            settings_hint_text(theme.clone(), "Toggle hotkey"),
+        settings_item_row([
+            settings_hint_text(
+                theme.clone(),
+                "Toggle hotkey",
+                Some("Use \"+\" as a seperator"),
+            ),
+            Space::new().width(Length::Fill).into(),
             text_input("Toggle Hotkey", &config.toggle_hotkey)
                 .on_input(|input| Message::SetConfig(SetConfigFields::ToggleHotkey(input.clone())))
-                .on_submit(Message::WriteConfig(false))
-                .width(Length::Fill)
+                .on_submit(Message::WriteConfig)
+                .width(Length::Fixed(SETTINGS_INPUT_WIDTH))
                 .style(move |_, _| settings_text_input_item_style(&theme_clone))
                 .into(),
-            notice_item(theme.clone(), "Use \"+\" as a seperator"),
         ]),
         ResetField::ToggleHotkey,
         theme.clone(),
@@ -162,17 +185,21 @@ fn general_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'stat
 
     let theme_clone = theme.clone();
     let cb_hotkey = settings_row_with_reset(
-        settings_item_column([
-            settings_hint_text(theme.clone(), "Clipboard hotkey"),
+        settings_item_row([
+            settings_hint_text(
+                theme.clone(),
+                "Clipboard hotkey",
+                Some("Use \"+\" as a seperator"),
+            ),
+            Space::new().width(Length::Fill).into(),
             text_input("Clipboard Hotkey", &config.clipboard_hotkey)
                 .on_input(|input| {
                     Message::SetConfig(SetConfigFields::ClipboardHotkey(input.clone()))
                 })
-                .on_submit(Message::WriteConfig(false))
-                .width(Length::Fill)
+                .on_submit(Message::WriteConfig)
+                .width(Length::Fixed(SETTINGS_INPUT_WIDTH))
                 .style(move |_, _| settings_text_input_item_style(&theme_clone))
                 .into(),
-            notice_item(theme.clone(), "Use \"+\" as a seperator"),
         ]),
         ResetField::ClipboardHotkey,
         theme.clone(),
@@ -180,15 +207,19 @@ fn general_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'stat
 
     let theme_clone = theme.clone();
     let placeholder_setting = settings_row_with_reset(
-        settings_item_column([
-            settings_hint_text(theme.clone(), "Set the rustcast placeholder"),
+        settings_item_row([
+            settings_hint_text(
+                theme.clone(),
+                "Set the rustcast placeholder",
+                Some("Welcome text on open"),
+            ),
+            Space::new().width(Length::Fill).into(),
             text_input("Set Placeholder", &config.placeholder)
                 .on_input(|input| Message::SetConfig(SetConfigFields::PlaceHolder(input.clone())))
-                .on_submit(Message::WriteConfig(false))
-                .width(Length::Fill)
+                .on_submit(Message::WriteConfig)
+                .width(Length::Fixed(SETTINGS_INPUT_WIDTH))
                 .style(move |_, _| settings_text_input_item_style(&theme_clone))
                 .into(),
-            notice_item(theme.clone(), "What the text box shows when its empty"),
         ]),
         ResetField::Placeholder,
         theme.clone(),
@@ -196,15 +227,19 @@ fn general_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'stat
 
     let theme_clone = theme.clone();
     let search = settings_row_with_reset(
-        settings_item_column([
-            settings_hint_text(theme.clone(), "Set the search URL"),
+        settings_item_row([
+            settings_hint_text(
+                theme.clone(),
+                "Set the search URL",
+                Some("Search engine to use (%s = query)"),
+            ),
+            Space::new().width(Length::Fill).into(),
             text_input("Set Search URL", &config.search_url)
                 .on_input(|input| Message::SetConfig(SetConfigFields::SearchUrl(input.clone())))
-                .on_submit(Message::WriteConfig(false))
-                .width(Length::Fill)
+                .on_submit(Message::WriteConfig)
+                .width(Length::Fixed(SETTINGS_INPUT_WIDTH))
                 .style(move |_, _| settings_text_input_item_style(&theme_clone))
                 .into(),
-            notice_item(theme.clone(), "Which search engine to use (%s = query)"),
         ]),
         ResetField::SearchUrl,
         theme.clone(),
@@ -213,184 +248,145 @@ fn general_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'stat
     let theme_clone = theme.clone();
     let current_delay = config.debounce_delay;
     let debounce = settings_row_with_reset(
-        settings_item_column([
-            settings_hint_text(theme.clone(), "Set the debounce time"),
+        settings_item_row([
+            settings_hint_text(
+                theme.clone(),
+                "Set the debounce time (ms)",
+                Some("File search response time"),
+            ),
+            Space::new().width(Length::Fill).into(),
             text_input("Set Debounce time (ms)", &config.debounce_delay.to_string())
                 .on_input(move |input: String| {
                     let delay = input.parse::<u64>().unwrap_or(current_delay);
                     Message::SetConfig(SetConfigFields::DebounceDelay(delay))
                 })
-                .on_submit(Message::WriteConfig(false))
-                .width(Length::Fill)
+                .on_submit(Message::WriteConfig)
+                .width(Length::Fixed(SETTINGS_INPUT_WIDTH))
                 .style(move |_, _| settings_text_input_item_style(&theme_clone))
                 .into(),
-            notice_item(
-                theme.clone(),
-                "How quickly you want file searching to return a value",
-            ),
         ]),
         ResetField::DebounceDelay,
         theme.clone(),
     );
 
-    let theme_clone = theme.clone();
-    let start_at_login = settings_row_with_reset(
-        settings_item_row([
-            settings_hint_text(theme.clone(), "Start at login"),
-            checkbox(config.clone().start_at_login)
-                .style(move |_, _| settings_checkbox_style(&theme_clone))
-                .on_toggle(Message::ToggleAutoStartup)
-                .into(),
-            notice_item(theme.clone(), "If you want rustcast to start on login"),
-        ]),
-        ResetField::StartAtLogin,
-        theme.clone(),
-    );
+    let start_at_login = settings_row_without_reset(settings_item_row([
+        settings_hint_text(theme.clone(), "Start at login", None::<String>),
+        Space::new().width(Length::Fill).into(),
+        toggler(config.clone().start_at_login)
+            .style(move |_, status| settings_toggle_style(status))
+            .on_toggle(Message::ToggleAutoStartup)
+            .into(),
+    ]));
 
-    let theme_clone = theme.clone();
-    let auto_update = settings_row_with_reset(
-        settings_item_row([
-            settings_hint_text(theme.clone(), "Auto update"),
-            checkbox(config.clone().auto_update)
-                .style(move |_, _| settings_checkbox_style(&theme_clone))
-                .on_toggle(move |input| Message::SetConfig(SetConfigFields::SetAutoUpdate(input)))
-                .into(),
-            notice_item(
-                theme.clone(),
-                "If rustcast should automatically update itself",
-            ),
-        ]),
-        ResetField::AutoUpdate,
-        theme.clone(),
-    );
+    let auto_update = settings_row_without_reset(settings_item_row([
+        settings_hint_text(theme.clone(), "Auto update", None::<String>),
+        Space::new().width(Length::Fill).into(),
+        toggler(config.clone().auto_update)
+            .style(move |_, status| settings_toggle_style(status))
+            .on_toggle(move |input| Message::SetConfig(SetConfigFields::SetAutoUpdate(input)))
+            .into(),
+    ]));
 
-    let theme_clone = theme.clone();
-    let haptic = settings_row_with_reset(
+    let haptic = settings_row_without_reset(
         Row::from_iter([
-            settings_hint_text(theme.clone(), "Haptic feedback"),
-            checkbox(config.clone().haptic_feedback)
-                .style(move |_, _| settings_checkbox_style(&theme_clone))
+            settings_hint_text(theme.clone(), "Haptic feedback", None::<String>),
+            Space::new().width(Length::Fill).into(),
+            toggler(config.clone().haptic_feedback)
+                .style(move |_, status| settings_toggle_style(status))
                 .on_toggle(|input| Message::SetConfig(SetConfigFields::HapticFeedback(input)))
                 .into(),
-            notice_item(
-                theme.clone(),
-                "If there should be haptic feedback when you type",
-            ),
         ])
         .align_y(Alignment::Center)
         .spacing(SETTINGS_ITEM_COL_SPACING * 2)
         .padding(SETTINGS_ITEM_PADDING)
         .height(SETTINGS_ITEM_HEIGHT),
-        ResetField::HapticFeedback,
-        theme.clone(),
     );
 
-    let theme_clone = theme.clone();
-    let tray_icon = settings_row_with_reset(
-        settings_item_row([
-            settings_hint_text(theme.clone(), "Show menubar icon"),
-            checkbox(config.clone().show_trayicon)
-                .style(move |_, _| settings_checkbox_style(&theme_clone))
-                .on_toggle(|input| Message::SetConfig(SetConfigFields::ShowMenubarIcon(input)))
-                .into(),
-            notice_item(
-                theme.clone(),
-                "If the menubar icon should be shown in rustcast",
-            ),
-        ]),
-        ResetField::ShowMenubarIcon,
-        theme.clone(),
-    );
+    let tray_icon = settings_row_without_reset(settings_item_row([
+        settings_hint_text(theme.clone(), "Show menubar icon", None::<String>),
+        Space::new().width(Length::Fill).into(),
+        toggler(config.clone().show_trayicon)
+            .style(move |_, status| settings_toggle_style(status))
+            .on_toggle(|input| Message::SetConfig(SetConfigFields::ShowMenubarIcon(input)))
+            .into(),
+    ]));
 
-    let theme_clone = theme.clone();
-    let clipboard_history = settings_row_with_reset(
+    let clipboard_history = settings_row_without_reset(
         Row::from_iter([
-            settings_hint_text(theme.clone(), "Enable Clipboard history"),
-            checkbox(config.clone().cbhist)
-                .style(move |_, _| settings_checkbox_style(&theme_clone))
+            settings_hint_text(theme.clone(), "Enable clipboard history", None::<String>),
+            Space::new().width(Length::Fill).into(),
+            toggler(config.clone().cbhist)
+                .style(move |_, status| settings_toggle_style(status))
                 .on_toggle(|input| Message::SetConfig(SetConfigFields::ClipboardHistory(input)))
                 .into(),
-            notice_item(
-                theme.clone(),
-                "If you want your clipboard history to be stored",
-            ),
         ])
         .align_y(Alignment::Center)
         .spacing(SETTINGS_ITEM_COL_SPACING * 2)
         .padding(SETTINGS_ITEM_PADDING)
         .height(SETTINGS_ITEM_HEIGHT),
-        ResetField::ClipboardHistory,
-        theme.clone(),
     );
 
-    let theme_clone = theme.clone();
-    let cbhist_paste_on_select = settings_row_with_reset(
+    let cbhist_paste_on_select = settings_row_without_reset(
         Row::from_iter([
-            settings_hint_text(theme.clone(), "Paste on select"),
-            checkbox(config.clone().cbhist_paste_on_select)
-                .style(move |_, _| settings_checkbox_style(&theme_clone))
+            settings_hint_text(theme.clone(), "Paste on select", None::<String>),
+            Space::new().width(Length::Fill).into(),
+            toggler(config.clone().cbhist_paste_on_select)
+                .style(move |_, status| settings_toggle_style(status))
                 .on_toggle(|input| {
                     Message::SetConfig(SetConfigFields::ClipboardPasteOnSelect(input))
                 })
                 .into(),
-            notice_item(theme.clone(), "Auto-paste clipboard item after selecting"),
         ])
         .align_y(Alignment::Center)
         .spacing(SETTINGS_ITEM_COL_SPACING * 2)
         .padding(SETTINGS_ITEM_PADDING)
         .height(SETTINGS_ITEM_HEIGHT),
-        ResetField::ClipboardPasteOnSelect,
-        theme.clone(),
     );
 
     let theme_clone = theme.clone();
-    let auto_suggest = settings_row_with_reset(
-        settings_item_column([
-            settings_hint_text(theme.clone(), "Suggestions on open"),
-            settings_item_row([
-                radio(
-                    "Favourites",
-                    MainPage::Favourites,
-                    Some(config.main_page),
-                    |page| Message::SetConfig(SetConfigFields::SetPage(page)),
-                )
-                .style({
-                    let theme_clone = theme_clone.clone();
-                    move |_, _| settings_radio_button_style(&theme_clone.clone())
-                })
-                .into(),
-                radio(
-                    "Frequents",
-                    MainPage::FrequentlyUsed,
-                    Some(config.main_page),
-                    |page| Message::SetConfig(SetConfigFields::SetPage(page)),
-                )
-                .style({
-                    let theme_clone = theme_clone.clone();
-                    move |_, _| settings_radio_button_style(&theme_clone.clone())
-                })
-                .into(),
-                radio("Events", MainPage::Events, Some(config.main_page), |page| {
-                    Message::SetConfig(SetConfigFields::SetPage(page))
-                })
-                .style({
-                    let theme_clone = theme_clone.clone();
-                    move |_, _| settings_radio_button_style(&theme_clone.clone())
-                })
-                .into(),
-                radio("Nothing", MainPage::Blank, Some(config.main_page), |page| {
-                    Message::SetConfig(SetConfigFields::SetPage(page))
-                })
-                .style(move |_, _| settings_radio_button_style(&theme_clone.clone()))
-                .into(),
-            ])
-            .spacing(30)
+    let auto_suggest = settings_row_without_reset(settings_item_row([
+        settings_hint_text(theme.clone(), "Suggestions on open", None::<String>),
+        Space::new().width(Length::Fill).into(),
+        settings_item_row([
+            radio(
+                "Favourites",
+                MainPage::Favourites,
+                Some(config.main_page),
+                |page| Message::SetConfig(SetConfigFields::SetPage(page)),
+            )
+            .style({
+                let theme_clone = theme_clone.clone();
+                move |_, _| settings_radio_button_style(&theme_clone.clone())
+            })
             .into(),
-            notice_item(theme.clone(), "What an empty query should show"),
-        ]),
-        ResetField::MainPage,
-        theme.clone(),
-    );
+            radio(
+                "Frequents",
+                MainPage::FrequentlyUsed,
+                Some(config.main_page),
+                |page| Message::SetConfig(SetConfigFields::SetPage(page)),
+            )
+            .style({
+                let theme_clone = theme_clone.clone();
+                move |_, _| settings_radio_button_style(&theme_clone.clone())
+            })
+            .into(),
+            radio("Events", MainPage::Events, Some(config.main_page), |page| {
+                Message::SetConfig(SetConfigFields::SetPage(page))
+            })
+            .style({
+                let theme_clone = theme_clone.clone();
+                move |_, _| settings_radio_button_style(&theme_clone.clone())
+            })
+            .into(),
+            radio("Nothing", MainPage::Blank, Some(config.main_page), |page| {
+                Message::SetConfig(SetConfigFields::SetPage(page))
+            })
+            .style(move |_, _| settings_radio_button_style(&theme_clone.clone()))
+            .into(),
+        ])
+        .spacing(30)
+        .into(),
+    ]));
 
     Column::from_iter([
         hotkey,
@@ -411,146 +407,118 @@ fn general_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'stat
 
 fn appearance_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'static, Message> {
     let theme_clone = theme.clone();
-    let theme_mode_setting = settings_row_with_reset(
-        settings_item_column([
-            settings_hint_text(theme.clone(), "Theme mode"),
-            settings_item_row([
-                radio(
-                    "Dark",
-                    ThemeMode::Dark,
-                    Some(config.theme.theme_mode),
-                    |mode| {
-                        Message::SetConfig(SetConfigFields::SetThemeFields(
-                            SetConfigThemeFields::ThemeMode(mode),
-                        ))
-                    },
-                )
-                .style({
-                    let theme_clone = theme_clone.clone();
-                    move |_, _| settings_radio_button_style(&theme_clone.clone())
-                })
-                .into(),
-                radio(
-                    "Light",
-                    ThemeMode::Light,
-                    Some(config.theme.theme_mode),
-                    |mode| {
-                        Message::SetConfig(SetConfigFields::SetThemeFields(
-                            SetConfigThemeFields::ThemeMode(mode),
-                        ))
-                    },
-                )
-                .style({
-                    let theme_clone = theme_clone.clone();
-                    move |_, _| settings_radio_button_style(&theme_clone.clone())
-                })
-                .into(),
-                radio(
-                    "System",
-                    ThemeMode::System,
-                    Some(config.theme.theme_mode),
-                    |mode| {
-                        Message::SetConfig(SetConfigFields::SetThemeFields(
-                            SetConfigThemeFields::ThemeMode(mode),
-                        ))
-                    },
-                )
-                .style(move |_, _| settings_radio_button_style(&theme_clone.clone()))
-                .into(),
-            ])
-            .spacing(30)
+    let theme_mode_setting = settings_row_without_reset(settings_item_row([
+        settings_hint_text(theme.clone(), "Theme mode", None::<String>),
+        Space::new().width(Length::Fill).into(),
+        settings_item_row([
+            radio(
+                "Dark",
+                ThemeMode::Dark,
+                Some(config.theme.theme_mode),
+                |mode| {
+                    Message::SetConfig(SetConfigFields::SetThemeFields(
+                        SetConfigThemeFields::ThemeMode(mode),
+                    ))
+                },
+            )
+            .style({
+                let theme_clone = theme_clone.clone();
+                move |_, _| settings_radio_button_style(&theme_clone.clone())
+            })
             .into(),
-            notice_item(
-                theme.clone(),
-                "System follows the macOS appearance automatically",
-            ),
-        ]),
-        ResetField::ThemeMode,
-        theme.clone(),
-    );
-
-    let theme_clone = theme.clone();
-    let show_scrollbar = settings_row_with_reset(
-        settings_item_row([
-            settings_hint_text(theme.clone(), "Show scrollbar"),
-            checkbox(config.theme.show_scroll_bar)
-                .style(move |_, _| settings_checkbox_style(&theme_clone))
-                .on_toggle(|input| {
+            radio(
+                "Light",
+                ThemeMode::Light,
+                Some(config.theme.theme_mode),
+                |mode| {
                     Message::SetConfig(SetConfigFields::SetThemeFields(
-                        SetConfigThemeFields::ShowScrollBar(input),
+                        SetConfigThemeFields::ThemeMode(mode),
                     ))
-                })
-                .into(),
-            notice_item(theme.clone(), "If there should be a scrollbar"),
-        ]),
-        ResetField::ShowScrollbar,
-        theme.clone(),
-    );
-
-    let theme_clone = theme.clone();
-    let clear_on_hide = settings_row_with_reset(
-        settings_item_row([
-            settings_hint_text(theme.clone(), "Clear on hide"),
-            checkbox(config.clone().buffer_rules.clear_on_hide)
-                .style(move |_, _| settings_checkbox_style(&theme_clone))
-                .on_toggle(move |input| {
-                    Message::SetConfig(SetConfigFields::SetBufferFields(
-                        SetConfigBufferFields::ClearOnHide(input),
-                    ))
-                })
-                .into(),
-            notice_item(
-                theme.clone(),
-                "If the query should be cleared when rustcast is hidden",
-            ),
-        ]),
-        ResetField::ClearOnHide,
-        theme.clone(),
-    );
-
-    let theme_clone = theme.clone();
-    let clear_on_enter = settings_row_with_reset(
-        settings_item_row([
-            settings_hint_text(theme.clone(), "Clear on enter"),
-            checkbox(config.clone().buffer_rules.clear_on_enter)
-                .style(move |_, _| settings_checkbox_style(&theme_clone))
-                .on_toggle(move |input| {
-                    Message::SetConfig(SetConfigFields::SetBufferFields(
-                        SetConfigBufferFields::ClearOnEnter(input),
-                    ))
-                })
-                .into(),
-            notice_item(
-                theme.clone(),
-                "If the query should be cleared when an app is opened",
-            ),
-        ]),
-        ResetField::ClearOnEnter,
-        theme.clone(),
-    );
-
-    let theme_clone = theme.clone();
-    let show_icons = settings_row_with_reset(
-        settings_item_row([
-            settings_hint_text(theme.clone(), "Show icons"),
-            checkbox(config.clone().theme.show_icons)
-                .style(move |_, _| settings_checkbox_style(&theme_clone))
-                .on_toggle(move |input| {
+                },
+            )
+            .style({
+                let theme_clone = theme_clone.clone();
+                move |_, _| settings_radio_button_style(&theme_clone.clone())
+            })
+            .into(),
+            radio(
+                "System",
+                ThemeMode::System,
+                Some(config.theme.theme_mode),
+                |mode| {
                     Message::SetConfig(SetConfigFields::SetThemeFields(
-                        SetConfigThemeFields::ShowIcons(input),
+                        SetConfigThemeFields::ThemeMode(mode),
                     ))
-                })
-                .into(),
-            notice_item(theme.clone(), "If you want app icons to be visible"),
-        ]),
-        ResetField::ShowIcons,
-        theme.clone(),
-    );
+                },
+            )
+            .style(move |_, _| settings_radio_button_style(&theme_clone.clone()))
+            .into(),
+        ])
+        .spacing(30)
+        .into(),
+    ]));
+
+    let show_scrollbar = settings_row_without_reset(settings_item_row([
+        settings_hint_text(theme.clone(), "Show scrollbar", None::<String>),
+        Space::new().width(Length::Fill).into(),
+        toggler(config.theme.show_scroll_bar)
+            .style(move |_, status| settings_toggle_style(status))
+            .on_toggle(|input| {
+                Message::SetConfig(SetConfigFields::SetThemeFields(
+                    SetConfigThemeFields::ShowScrollBar(input),
+                ))
+            })
+            .into(),
+    ]));
+
+    let clear_on_hide = settings_row_without_reset(settings_item_row([
+        settings_hint_text(
+            theme.clone(),
+            "Clear on hide",
+            Some("Clear query when rustcast is hidden"),
+        ),
+        Space::new().width(Length::Fill).into(),
+        toggler(config.clone().buffer_rules.clear_on_hide)
+            .style(move |_, status| settings_toggle_style(status))
+            .on_toggle(move |input| {
+                Message::SetConfig(SetConfigFields::SetBufferFields(
+                    SetConfigBufferFields::ClearOnHide(input),
+                ))
+            })
+            .into(),
+    ]));
+
+    let clear_on_enter = settings_row_without_reset(settings_item_row([
+        settings_hint_text(theme.clone(), "Clear on enter", None::<String>),
+        Space::new().width(Length::Fill).into(),
+        toggler(config.clone().buffer_rules.clear_on_enter)
+            .style(move |_, status| settings_toggle_style(status))
+            .on_toggle(move |input| {
+                Message::SetConfig(SetConfigFields::SetBufferFields(
+                    SetConfigBufferFields::ClearOnEnter(input),
+                ))
+            })
+            .into(),
+    ]));
+
+    let show_icons = settings_row_without_reset(settings_item_row([
+        settings_hint_text(theme.clone(), "Show icons", None::<String>),
+        Space::new().width(Length::Fill).into(),
+        toggler(config.clone().theme.show_icons)
+            .style(move |_, status| settings_toggle_style(status))
+            .on_toggle(move |input| {
+                Message::SetConfig(SetConfigFields::SetThemeFields(
+                    SetConfigThemeFields::ShowIcons(input),
+                ))
+            })
+            .into(),
+    ]));
 
     let theme_clone = theme.clone();
     let font_family = settings_row_with_reset(
-        settings_item_column([
-            settings_hint_text(theme.clone(), "Set Font family"),
+        settings_item_row([
+            settings_hint_text(theme.clone(), "Font family", None::<String>),
+            Space::new().width(Length::Fill).into(),
             text_input(
                 "Font family",
                 &config.theme.font.clone().unwrap_or("".to_string()),
@@ -560,11 +528,10 @@ fn appearance_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'s
                     input,
                 )))
             })
-            .on_submit(Message::WriteConfig(false))
-            .width(Length::Fill)
+            .on_submit(Message::WriteConfig)
+            .width(Length::Fixed(SETTINGS_INPUT_WIDTH))
             .style(move |_, _| settings_text_input_item_style(&theme_clone))
             .into(),
-            notice_item(theme.clone(), "What font rustcast should use"),
         ]),
         ResetField::Font,
         theme.clone(),
@@ -572,20 +539,21 @@ fn appearance_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'s
 
     let theme_clone = theme.clone();
     let event_duration = settings_row_with_reset(
-        settings_item_column([
-            settings_hint_text(theme.clone(), "Set Event duration"),
+        settings_item_row([
+            settings_hint_text(
+                theme.clone(),
+                "Event duration",
+                Some("Minutes from now events should be displayed"),
+            ),
+            Space::new().width(Length::Fill).into(),
             text_input("Event duration", &config.event_duration.to_string())
                 .on_input(move |input: String| {
                     Message::SetConfig(SetConfigFields::SetEventDuration(input))
                 })
-                .on_submit(Message::WriteConfig(false))
-                .width(Length::Fill)
+                .on_submit(Message::WriteConfig)
+                .width(Length::Fixed(SETTINGS_INPUT_WIDTH))
                 .style(move |_, _| settings_text_input_item_style(&theme_clone))
                 .into(),
-            notice_item(
-                theme.clone(),
-                "How many minutes from now the events should be displayed",
-            ),
         ]),
         ResetField::EventDuration,
         theme.clone(),
@@ -597,11 +565,12 @@ fn appearance_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'s
     let theme_clone_3 = theme.clone();
     let text_clr = settings_row_with_reset(
         Column::from_iter([
-            settings_hint_text(theme.clone(), "Set text colour"),
+            settings_hint_text(theme.clone(), "Set text colour", None::<String>),
             Column::from_iter([
                 settings_hint_text(
                     theme.clone(),
                     format!("R value: {}", theme_clone.text_color.0),
+                    None::<String>,
                 ),
                 Slider::new(
                     0..=100,
@@ -620,6 +589,7 @@ fn appearance_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'s
                 settings_hint_text(
                     theme.clone(),
                     format!("G value: {}", theme_clone.text_color.1),
+                    None::<String>,
                 ),
                 Slider::new(
                     0..=100,
@@ -638,6 +608,7 @@ fn appearance_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'s
                 settings_hint_text(
                     theme.clone(),
                     format!("B value: {}", theme_clone.text_color.2),
+                    None::<String>,
                 ),
                 Slider::new(
                     0..=100,
@@ -653,7 +624,6 @@ fn appearance_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'s
                 .style(move |_, _| settings_slider_style(&theme_clone_3))
                 .width((WINDOW_WIDTH / 5.) * 4.)
                 .into(),
-                notice_item(theme.clone(), "Text colour in RGB format"),
             ])
             .spacing(7)
             .width(Length::Fill)
@@ -670,11 +640,12 @@ fn appearance_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'s
     let theme_clone_3 = theme.clone();
     let bg_clr = settings_row_with_reset(
         Column::from_iter([
-            settings_hint_text(theme.clone(), "Set background colour"),
+            settings_hint_text(theme.clone(), "Set background colour", None::<String>),
             Column::from_iter([
                 settings_hint_text(
                     theme.clone(),
                     format!("R value: {}", theme_clone.background_color.0),
+                    None::<String>,
                 ),
                 Slider::new(
                     0..=100,
@@ -693,6 +664,7 @@ fn appearance_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'s
                 settings_hint_text(
                     theme.clone(),
                     format!("G value: {}", theme_clone.background_color.1),
+                    None::<String>,
                 ),
                 Slider::new(
                     0..=100,
@@ -711,6 +683,7 @@ fn appearance_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'s
                 settings_hint_text(
                     theme.clone(),
                     format!("B value: {}", theme_clone.background_color.2),
+                    None::<String>,
                 ),
                 Slider::new(
                     0..=100,
@@ -726,7 +699,6 @@ fn appearance_tab(config: Box<Config>, theme: crate::config::Theme) -> Column<'s
                 .style(move |_, _| settings_slider_style(&theme_clone_3))
                 .width((WINDOW_WIDTH / 5.) * 4.)
                 .into(),
-                notice_item(theme.clone(), "Background colour in RGB format"),
             ])
             .spacing(7)
             .width(Length::Fill)
@@ -772,7 +744,8 @@ fn section_header_with_reset(
     theme: crate::config::Theme,
 ) -> Element<'static, Message> {
     Row::from_iter([
-        settings_hint_text(theme.clone(), label),
+        settings_hint_text(theme.clone(), label, None::<String>),
+        Space::new().width(Length::Fill).into(),
         reset_button(theme, field),
     ])
     .align_y(Alignment::Center)
@@ -793,6 +766,16 @@ fn settings_row_with_reset(
         .into()
 }
 
+fn settings_row_without_reset(
+    content: impl Into<Element<'static, Message>>,
+) -> Element<'static, Message> {
+    Row::from_iter([content.into()])
+        .align_y(Alignment::Center)
+        .spacing(5)
+        .width(Length::Fill)
+        .into()
+}
+
 fn savebutton(theme: Theme) -> Element<'static, Message> {
     Button::new(
         Text::new("Save")
@@ -802,7 +785,7 @@ fn savebutton(theme: Theme) -> Element<'static, Message> {
     )
     .style(move |_, _| settings_save_button_style(&theme))
     .width(Length::Fill)
-    .on_press(Message::WriteConfig(true))
+    .on_press(Message::WriteConfig)
     .into()
 }
 
@@ -839,21 +822,25 @@ fn copy_config_button(config: Box<Config>) -> Element<'static, Message> {
     .into()
 }
 
-fn settings_hint_text(theme: Theme, text: impl ToString) -> Element<'static, Message> {
-    let text = text.to_string();
-
-    Text::new(text)
+fn settings_hint_text(
+    theme: Theme,
+    text: impl ToString,
+    subtitle: Option<impl ToString>,
+) -> Element<'static, Message> {
+    let title = Text::new(text.to_string())
         .font(theme.font())
-        .color(theme.text_color(0.7))
-        .into()
-}
+        .color(theme.text_color(0.7));
 
-fn settings_item_column(
-    elems: impl IntoIterator<Item = Element<'static, Message>>,
-) -> Column<'static, Message> {
-    Column::from_iter(elems)
-        .spacing(SETTINGS_ITEM_COL_SPACING)
-        .padding(SETTINGS_ITEM_PADDING)
+    let mut content = Column::new().push(title);
+
+    if let Some(subtitle) = subtitle {
+        let subtitle = Text::new(subtitle.to_string())
+            .font(theme.font())
+            .color(theme.text_color(0.3));
+        content = content.push(subtitle);
+    }
+
+    container(content).into()
 }
 
 fn settings_item_row(
@@ -985,7 +972,7 @@ fn text_input_cell(text: String, theme: &Theme, placeholder: &str) -> TextInput<
     text_input(placeholder, &text)
         .font(theme.font())
         .padding(5)
-        .on_submit(Message::WriteConfig(false))
+        .on_submit(Message::WriteConfig)
 }
 
 fn modes_item(modes: HashMap<String, String>, theme: &Theme) -> Element<'static, Message> {

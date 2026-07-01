@@ -100,6 +100,7 @@ pub fn new(hotkeys: Hotkeys, config: &Config) -> (Tile, Task<Message>) {
             file_dialog_open: false,
             settings_tab: SettingsTab::General,
             debouncer: Debouncer::new(config.debounce_delay),
+            settings_window: None,
         },
         Task::batch([open.map(|_| Message::OpenWindow)]),
     )
@@ -107,6 +108,10 @@ pub fn new(hotkeys: Hotkeys, config: &Config) -> (Tile, Task<Message>) {
 
 /// The elm View function that renders the entire rustcast window
 pub fn view(tile: &Tile, wid: window::Id) -> Element<'_, Message> {
+    if tile.settings_window == Some(wid) {
+        return settings_page(tile.config.clone(), tile.settings_tab);
+    };
+
     if tile.visible {
         let title_input = text_input(tile.config.placeholder.as_str(), &tile.query)
             .on_input(move |a| Message::SearchQueryChanged(a, wid))
@@ -119,17 +124,16 @@ pub fn view(tile: &Tile, wid: window::Id) -> Element<'_, Message> {
             .style(move |_, _| rustcast_text_input_style(&tile.config.theme))
             .padding(20);
 
-        let scrollbar_direction =
-            if !tile.config.theme.show_scroll_bar || tile.page == Page::Settings {
-                Direction::Vertical(Scrollbar::hidden())
-            } else {
-                Direction::Vertical(
-                    Scrollbar::new()
-                        .width(1)
-                        .scroller_width(1.1)
-                        .anchor(Anchor::Start),
-                )
-            };
+        let scrollbar_direction = if !tile.config.theme.show_scroll_bar {
+            Direction::Vertical(Scrollbar::hidden())
+        } else {
+            Direction::Vertical(
+                Scrollbar::new()
+                    .width(1)
+                    .scroller_width(1.1)
+                    .anchor(Anchor::Start),
+            )
+        };
 
         let results = match tile.page {
             Page::ClipboardHistory => clipboard_view(
@@ -145,7 +149,6 @@ pub fn view(tile: &Tile, wid: window::Id) -> Element<'_, Message> {
                     .collect(),
                 tile.focus_id,
             ),
-            Page::Settings => settings_page(tile.config.clone(), tile.settings_tab),
             Page::FileSearch | Page::Main => container(Column::from_iter(
                 tile.results.iter().enumerate().map(|(i, app)| {
                     app.clone().render(
@@ -162,12 +165,11 @@ pub fn view(tile: &Tile, wid: window::Id) -> Element<'_, Message> {
         let results_count = match &tile.page {
             Page::Main | Page::EmojiSearch | Page::FileSearch => tile.results.len(),
             Page::ClipboardHistory => tile.clipboard_content.len(),
-            Page::Settings => 0,
         };
 
         // This determines the height of the scrollable window
         let height = match tile.page {
-            Page::ClipboardHistory | Page::Settings => 385,
+            Page::ClipboardHistory => 385,
             // Height of each emoji is EMOJI_HEIGHT + 20 for padding
             Page::EmojiSearch => std::cmp::min(tile.results.len().div_ceil(6) * 90, 290),
             _ => std::cmp::min(tile.results.len() * 60, 290),

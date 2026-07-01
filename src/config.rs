@@ -105,21 +105,26 @@ impl Default for ThemeMode {
 
 impl ThemeMode {
     /// Return preset text and background colors for this mode.
-    pub fn presets(&self, is_system_dark: bool) -> ((f32, f32, f32), (f32, f32, f32)) {
+    pub fn presets(
+        &self,
+        is_system_dark: bool,
+    ) -> ((f32, f32, f32), (f32, f32, f32), (f32, f32, f32)) {
         match self {
             ThemeMode::Dark => (
                 (0.95, 0.95, 0.96), // light text
                 (0.0, 0.0, 0.0),    // dark background
+                (0.1, 0.1, 0.1),    // dark secondary background
             ),
             ThemeMode::Light => (
                 (0.05, 0.05, 0.05), // dark text
                 (0.95, 0.95, 0.96), // light background
+                (0.9, 0.9, 0.9),    // light secondary background
             ),
             ThemeMode::System => {
                 if is_system_dark {
-                    ((0.95, 0.95, 0.96), (0.0, 0.0, 0.0))
+                    ((0.95, 0.95, 0.96), (0.0, 0.0, 0.0), (0.1, 0.1, 0.1))
                 } else {
-                    ((0.05, 0.05, 0.05), (0.95, 0.95, 0.96))
+                    ((0.05, 0.05, 0.05), (0.95, 0.95, 0.96), (0.9, 0.9, 0.9))
                 }
             }
         }
@@ -132,6 +137,7 @@ impl ThemeMode {
 pub struct Theme {
     pub text_color: (f32, f32, f32),
     pub background_color: (f32, f32, f32),
+    pub secondary_bg_color: (f32, f32, f32),
     pub blur: bool,
     pub show_icons: bool,
     pub show_scroll_bar: bool,
@@ -141,10 +147,11 @@ pub struct Theme {
 
 impl Default for Theme {
     fn default() -> Self {
-        let (text, bg) = ThemeMode::Dark.presets(true);
+        let (text, bg, secondary) = ThemeMode::Dark.presets(true);
         Self {
             text_color: text,
             background_color: bg,
+            secondary_bg_color: secondary,
             blur: false,
             show_icons: true,
             show_scroll_bar: false,
@@ -206,6 +213,16 @@ impl Theme {
             r: self.background_color.0,
             g: self.background_color.1,
             b: self.background_color.2,
+            a: 0.,
+        }
+    }
+
+    /// Return the secondary background color in the theme config of type [`iced::Color`]
+    pub fn secondary_bg_color(&self) -> iced::Color {
+        iced::Color {
+            r: self.secondary_bg_color.0,
+            g: self.secondary_bg_color.1,
+            b: self.secondary_bg_color.2,
             a: 0.,
         }
     }

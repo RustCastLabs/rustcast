@@ -175,6 +175,7 @@ fn build_mdfind_args(query: &str, dirs: &[String], home_dir: &str) -> Option<Vec
 /// - Clipboard Content (`Vec<`[`ClipBoardContentType`]`>`) all of the cliboard contents
 /// - Page ([`Page`]) the current page of the window (main or clipboard history)
 /// - RustCast's height: to figure out which height to resize to
+/// - Settings Window: the ID of the window if it is open
 #[derive(Clone)]
 pub struct Tile {
     pub theme: iced::Theme,
@@ -202,6 +203,7 @@ pub struct Tile {
     pub file_dialog_open: bool,
     pub settings_tab: crate::app::SettingsTab,
     debouncer: Debouncer,
+    pub settings_window: Option<window::Id>,
 }
 
 /// A struct to store all the hotkeys
@@ -255,7 +257,7 @@ impl Tile {
                 ..
             }) => {
                 if cha.to_string() == "," {
-                    return Some(Message::SwitchToPage(Page::Settings));
+                    return Some(Message::OpenSettingsWindow);
                 }
                 None
             }

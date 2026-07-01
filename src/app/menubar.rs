@@ -128,7 +128,10 @@ fn init_event_handler(sender: ExtSender, shortcut: Shortcut) {
             }
             "open_preferences" => {
                 runtime.spawn(async move {
-                    sender.clone().try_send(Message::OpenToSettings).unwrap();
+                    sender
+                        .clone()
+                        .try_send(Message::OpenSettingsWindow)
+                        .unwrap();
                 });
             }
             "open_github_page" => {
